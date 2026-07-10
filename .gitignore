@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.local
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated output
+output/
+exports/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
