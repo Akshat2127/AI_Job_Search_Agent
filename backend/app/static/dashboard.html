@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>JobAgent AI Dashboard</title>
+  <style>
+    :root { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #172033; background:#f6f7fb; }
+    body { margin:0; }
+    header { background:#111827; color:white; padding:18px 28px; display:flex; align-items:center; justify-content:space-between; }
+    header h1 { margin:0; font-size:22px; }
+    header a { color:#bfdbfe; text-decoration:none; margin-left:16px; }
+    main { padding:24px; max-width:1320px; margin:0 auto; }
+    .cards { display:grid; grid-template-columns: repeat(4, minmax(160px,1fr)); gap:14px; margin-bottom:18px; }
+    .card { background:white; border-radius:14px; padding:18px; box-shadow: 0 1px 4px rgba(15,23,42,.08); }
+    .card .label { color:#64748b; font-size:13px; }
+    .card .value { font-size:30px; font-weight:700; margin-top:4px; }
+    .toolbar { background:white; border-radius:14px; padding:14px; display:flex; gap:10px; align-items:center; margin-bottom:16px; box-shadow: 0 1px 4px rgba(15,23,42,.08); flex-wrap:wrap; }
+    input, select, button, textarea { font: inherit; }
+    input, select { border:1px solid #cbd5e1; border-radius:10px; padding:9px 10px; background:white; }
+    button { border:0; border-radius:10px; padding:9px 12px; cursor:pointer; font-weight:600; }
+    .primary { background:#2563eb; color:white; }
+    .approve { background:#16a34a; color:white; }
+    .maybe { background:#ca8a04; color:white; }
+    .skip { background:#dc2626; color:white; }
+    .neutral { background:#e2e8f0; color:#0f172a; }
+    .layout { display:grid; grid-template-columns: 1.1fr .9fr; gap:16px; }
+    table { width:100%; border-collapse:collapse; background:white; border-radius:14px; overflow:hidden; box-shadow: 0 1px 4px rgba(15,23,42,.08); }
+    th, td { text-align:left; padding:12px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    th { background:#f8fafc; font-size:12px; color:#475569; text-transform:uppercase; letter-spacing:.04em; }
+    tr:hover { background:#f8fafc; }
+    .score { font-weight:800; border-radius:999px; padding:4px 9px; display:inline-block; }
+    .score.high { background:#dcfce7; color:#166534; }
+    .score.mid { background:#fef9c3; color:#854d0e; }
+    .score.low { background:#fee2e2; color:#991b1b; }
+    .pill { display:inline-block; padding:3px 8px; border-radius:999px; background:#e0e7ff; color:#3730a3; font-size:12px; }
+    .detail { background:white; border-radius:14px; padding:18px; box-shadow: 0 1px 4px rgba(15,23,42,.08); position:sticky; top:16px; max-height: calc(100vh - 32px); overflow:auto; }
+    .muted { color:#64748b; }
+    pre { white-space:pre-wrap; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:12px; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+    .empty { background:white; border-radius:14px; padding:24px; text-align:center; color:#64748b; }
+    @media (max-width: 900px) { .layout { grid-template-columns:1fr; } .cards { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>JobAgent AI</h1>
+    <nav><a href="/docs">API Docs</a><a href="/export/jobs.csv">Export CSV</a></nav>
+  </header>
+  <main>
+    <section class="cards">
+      <div class="card"><div class="label">Total jobs</div><div id="total" class="value">—</div></div>
+      <div class="card"><div class="label">Excellent matches</div><div id="excellent" class="value">—</div></div>
+      <div class="card"><div class="label">Approved</div><div id="approved" class="value">—</div></div>
+      <div class="card"><div class="label">Average score</div><div id="avg" class="value">—</div></div>
+    </section>
+
+    <section class="toolbar">
+      <input id="q" placeholder="Search title, company, description" size="34" />
+      <select id="decision">
+        <option value="">All decisions</option><option value="new">New</option><option value="approve">Approved</option><option value="maybe">Maybe</option><option value="skip">Skipped</option><option value="applied">Applied</option><option value="interview">Interview</option>
+      </select>
+      <select id="minScore"><option value="">Any score</option><option value="80">80+</option><option value="70">70+</option><option value="50">50+</option></select>
+      <button class="primary" onclick="loadAll()">Refresh</button>
+      <button class="neutral" onclick="clearFilters()">Clear</button>
+    </section>
+
+    <section class="layout">
+      <div id="jobsPane"></div>
+      <aside class="detail" id="detail"><h2>Select a job</h2><p class="muted">Click any row to preview fit reason, cover letter, and recruiter message.</p></aside>
+    </section>
+  </main>
+<script>
+let jobs = [];
+let selected = null;
+function scoreClass(score){ return score >= 80 ? 'high' : score >= 60 ? 'mid' : 'low'; }
+async function api(path, options){ const r = await fetch(path, options); if(!r.ok){ throw new Error(await r.text()); } return r.json(); }
+async function loadSummary(){
+  const s = await api('/analytics/summary');
+  document.getElementById('total').textContent = s.total_jobs;
+  document.getElementById('excellent').textContent = s.excellent_matches;
+  document.getElementById('approved').textContent = s.approved;
+  document.getElementById('avg').textContent = s.average_score;
+}
+async function loadJobs(){
+  const params = new URLSearchParams();
+  const q = document.getElementById('q').value.trim();
+  const decision = document.getElementById('decision').value;
+  const minScore = document.getElementById('minScore').value;
+  if(q) params.set('q', q); if(decision) params.set('decision', decision); if(minScore) params.set('min_score', minScore);
+  jobs = await api('/jobs' + (params.toString() ? '?' + params.toString() : ''));
+  renderJobs();
+}
+function renderJobs(){
+  const pane = document.getElementById('jobsPane');
+  if(!jobs.length){ pane.innerHTML = '<div class="empty">No jobs match the current filter.</div>'; return; }
+  pane.innerHTML = `<table><thead><tr><th>Score</th><th>Role</th><th>Company</th><th>Decision</th><th>Resume</th></tr></thead><tbody>` + jobs.map(j => `
+    <tr onclick="selectJob(${j.id})">
+      <td><span class="score ${scoreClass(j.fit_score)}">${j.fit_score}</span></td>
+      <td><strong>${escapeHtml(j.title)}</strong><br><span class="muted">${escapeHtml(j.location || '')} ${escapeHtml(j.remote_type || '')}</span></td>
+      <td>${escapeHtml(j.company)}<br><a href="${escapeAttr(j.url)}" target="_blank" onclick="event.stopPropagation()">open</a></td>
+      <td><span class="pill">${escapeHtml(j.decision)}</span></td>
+      <td>${escapeHtml(j.resume_variant || '')}</td>
+    </tr>`).join('') + `</tbody></table>`;
+}
+async function selectJob(id){ selected = jobs.find(j => j.id === id) || await api('/jobs/' + id); renderDetail(selected); }
+function renderDetail(j){
+  document.getElementById('detail').innerHTML = `
+    <h2>${escapeHtml(j.title)}</h2>
+    <p><strong>${escapeHtml(j.company)}</strong> · ${escapeHtml(j.location || '')} · ${escapeHtml(j.remote_type || '')}</p>
+    <p><span class="score ${scoreClass(j.fit_score)}">Fit ${j.fit_score}</span> <span class="pill">${escapeHtml(j.decision)}</span> <span class="pill">${escapeHtml(j.status)}</span></p>
+    <div class="actions">
+      <button class="approve" onclick="setDecision(${j.id}, 'approve')">Approve</button>
+      <button class="maybe" onclick="setDecision(${j.id}, 'maybe')">Maybe</button>
+      <button class="skip" onclick="setDecision(${j.id}, 'skip')">Skip</button>
+      <button class="neutral" onclick="rescore(${j.id})">Rescore</button>
+      <button class="primary" onclick="window.open('${escapeAttr(j.url)}', '_blank')">Open Job</button>
+    </div>
+    <h3>Why it matched</h3><p>${escapeHtml(j.score_reason || '')}</p>
+    <h3>Description</h3><pre>${escapeHtml(j.description || '')}</pre>
+    <h3>Recruiter message</h3><pre>${escapeHtml(j.recruiter_message || '')}</pre>
+    <h3>Cover letter</h3><pre>${escapeHtml(j.cover_letter || '')}</pre>`;
+}
+async function setDecision(id, decision){ selected = await api(`/jobs/${id}/decision`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({decision})}); await loadAll(); renderDetail(selected); }
+async function rescore(id){ selected = await api(`/jobs/${id}/score`, {method:'POST'}); await loadAll(); renderDetail(selected); }
+async function loadAll(){ await Promise.all([loadSummary(), loadJobs()]); }
+function clearFilters(){ document.getElementById('q').value=''; document.getElementById('decision').value=''; document.getElementById('minScore').value=''; loadAll(); }
+function escapeHtml(s){ return String(s ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/`/g, '&#96;'); }
+document.getElementById('q').addEventListener('keyup', e => { if(e.key === 'Enter') loadAll(); });
+loadAll().catch(e => { document.getElementById('jobsPane').innerHTML = '<div class="empty">Error: '+escapeHtml(e.message)+'</div>'; });
+</script>
+</body>
+</html>

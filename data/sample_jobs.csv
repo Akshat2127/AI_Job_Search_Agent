@@ -1,0 +1,5 @@
+company,title,location,remote_type,url,source,description
+Premera,Senior Business Systems Analyst,Mountlake Terrace WA,Hybrid,https://example.com/premera-bsa,csv,"Healthcare claims systems, requirements, UAT, SQL, stakeholder management, process mapping."
+City of Renton,Business Systems Analyst,Renton WA,Hybrid,https://example.com/renton-bsa,csv,"Public sector systems analyst role involving requirements, process improvement, workflows, vendor coordination."
+RandomSoft,Senior Software Engineer,Seattle WA,Onsite,https://example.com/engineer,csv,"Java backend engineer, coding role, not a business analyst position."
+ServiceNow Partner,Business Analyst - ServiceNow,Remote,Remote,https://example.com/sn-ba,csv,"ServiceNow workflows, message center, UAT, stakeholder sessions, process mapping."

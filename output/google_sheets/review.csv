@@ -1,0 +1,5 @@
+id,company,title,location,fit_score,decision,status,url,score_reason,resume_variant
+1,Premera,Senior Business Systems Analyst,Mountlake Terrace WA,100,new,discovered,https://example.com/premera-bsa,"title match: Business Systems Analyst; keyword matches: claims, healthcare, uat, requirements, stakeholder, process mapping, sql; location/remote fit; domain fit",healthcare_bsa
+4,ServiceNow Partner,Business Analyst - ServiceNow,Remote,90,new,discovered,https://example.com/sn-ba,"title match: Business Analyst; keyword matches: servicenow, uat, stakeholder, process mapping, workflow; location/remote fit",servicenow_ba
+2,City of Renton,Business Systems Analyst,Renton WA,80,new,discovered,https://example.com/renton-bsa,"title match: Business Systems Analyst; keyword matches: requirements, workflow, public sector; location/remote fit",servicenow_ba
+3,RandomSoft,Senior Software Engineer,Seattle WA,40,new,discovered,https://example.com/engineer,title match: Business Analyst; location/remote fit; concerns: senior software engineer,healthcare_bsa
