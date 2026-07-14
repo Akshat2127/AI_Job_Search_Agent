@@ -41,5 +41,5 @@ def test_initial_migration_upgrades_empty_database(tmp_path):
     with sqlite3.connect(database) as connection:
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         revision = connection.execute("SELECT version_num FROM alembic_version").fetchone()
-    assert {"jobs", "alembic_version"}.issubset(tables)
-    assert revision == ("20260713_0001",)
+    assert {"jobs", "users", "candidate_profiles", "resumes", "alembic_version"}.issubset(tables)
+    assert revision == ("08e8c4b1cf4d",)

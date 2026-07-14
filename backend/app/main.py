@@ -11,14 +11,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+import backend.app.models  # noqa: F401
 from backend.app.api.analytics import router as analytics_router
+from backend.app.api.auth import router as auth_router
+from backend.app.api.candidates import router as candidates_router
 from backend.app.api.export import router as export_router
 from backend.app.api.jobs import router as jobs_router
 from backend.app.api.system import router as system_router
 from backend.app.core.config import settings
 from backend.app.core.logging import configure_logging
 from backend.app.db.session import Base, engine
-from backend.app.models.job import Job  # noqa: F401
 
 configure_logging(settings)
 logger = logging.getLogger("jobagent.request")
@@ -127,3 +129,5 @@ for router in (jobs_router, analytics_router, export_router):
     app.include_router(router, prefix="/api/v1")
 app.include_router(system_router)
 app.include_router(system_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(candidates_router, prefix="/api/v1")

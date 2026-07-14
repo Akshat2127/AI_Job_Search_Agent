@@ -31,3 +31,15 @@ Every HTTP response includes `X-Request-ID`. A caller-supplied `X-Request-ID` is
 ```
 
 Authentication, ownership, pagination envelopes, and normalized domain APIs arrive in subsequent milestones. The current endpoints must not be exposed publicly.
+
+## Milestone 2 preview APIs
+
+The in-progress candidate backend exposes:
+
+- `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/auth/me`, and `POST /api/v1/auth/logout`.
+- `GET|POST /api/v1/candidates` and `GET|PATCH /api/v1/candidates/{id}`.
+- Candidate-owned preferences, skills, experiences, application answers, and resume endpoints below `/api/v1/candidates/{id}`.
+
+Password login returns an opaque bearer token; only its SHA-256 digest is stored. Development mode may create one configured local identity, but only for localhost/test clients. Production startup rejects development authentication. Browser cookie/CSRF delivery and the frontend sign-in flow are still pending, so this API must not yet be exposed publicly.
+
+Resume upload accepts PDF and DOCX up to `MAX_RESUME_BYTES`, validates the declared type, extension, and file signature, extracts text, stores the file below the gitignored `UPLOAD_ROOT`, and marks it `needs_review`. Extracted text is not a confirmed candidate fact until the user approves it.

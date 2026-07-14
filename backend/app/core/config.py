@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     log_format: str = "console"
     cors_origins: list[str] = ["http://localhost:3000"]
     auto_create_tables: bool = False
+    auth_mode: str = "development"
+    development_user_email: str = "local@jobagent.invalid"
+    session_ttl_hours: int = 12
+    upload_root: str = "./storage/uploads"
+    max_resume_bytes: int = 10 * 1024 * 1024
 
     @field_validator("app_env")
     @classmethod
@@ -35,7 +40,16 @@ class Settings(BaseSettings):
                 raise ValueError("production requires LOG_FORMAT=json")
             if self.auto_create_tables:
                 raise ValueError("AUTO_CREATE_TABLES must be false in production; use Alembic")
+            if self.auth_mode == "development":
+                raise ValueError("production cannot use AUTH_MODE=development")
         return self
+
+    @field_validator("auth_mode")
+    @classmethod
+    def validate_auth_mode(cls, value: str) -> str:
+        if value not in {"development", "password"}:
+            raise ValueError("must be development or password")
+        return value
 
 
 settings = Settings()

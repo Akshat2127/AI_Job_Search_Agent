@@ -6,7 +6,8 @@ Last updated: 2026-07-13.
 
 - Milestone 0 — audit and recovery: complete.
 - Milestone 1 — foundation: complete and pushed.
-- Milestones 2–11: not started.
+- Milestone 2 — users and candidate profiles: in progress; backend checkpoint ready.
+- Milestones 3–11: not started.
 
 ## Verified baseline
 
@@ -22,9 +23,20 @@ Last updated: 2026-07-13.
 
 Milestone 1 includes typed production environment validation, console/JSON logging, request IDs, readiness, `/api/v1` compatibility routes, standardized safe errors, Alembic baseline migration and migration tests, Ruff/mypy, runtime smoke testing, GitHub Actions CI, and health-checked non-root containers. A clean Compose build created PostgreSQL, migrated it to `20260713_0001`, and returned successful live health/readiness/jobs responses through both API and frontend proxy; all three services reached healthy status.
 
+Milestone 2 backend checkpoint includes:
+
+- Additive migration `08e8c4b1cf4d` for users, hashed auth sessions, candidate profiles, preferences, skills, employment, application answers, and resumes.
+- Argon2 password hashing, opaque SHA-256-hashed bearer sessions, expiration/revocation, a localhost-only development identity, and production rejection of development auth.
+- Ownership-filtered candidate APIs that return 404 across ownership boundaries.
+- Nullable work-authorization and sponsorship settings; sensitive answers always require per-use confirmation.
+- PDF/DOCX upload size/type/signature/path validation, local gitignored storage, text extraction, and mandatory `needs_review` state.
+- Isolated in-memory test database plus authentication, ownership, preference, sensitive-answer, DOCX parsing, invalid-upload, and migration coverage. Fifteen backend tests pass at this checkpoint.
+
+This is not the completed Milestone 2 UI or domain model. Education, certifications, projects, resume duplicate handling/versioning, deletion/storage cleanup, audit events, frontend profile screens, and production session delivery hardening remain.
+
 ## Next continuation task
 
-Commit and push Milestone 1 after the final `make check`, then begin Milestone 2 with User/Candidate ownership, authentication boundaries, normalized profile/preferences/skills/experience, and resume upload validation.
+Continue Milestone 2 by adding education/certification/project models, resume duplicate/version and deletion behavior, audit events, secure cookie/CSRF-capable browser session delivery, and the candidate profile/resume frontend. Expand API documentation and isolation tests, run `make check` plus Compose migration verification, then commit the completed milestone.
 
 ## Durable session handoff
 
