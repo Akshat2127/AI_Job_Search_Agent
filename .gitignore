@@ -30,6 +30,7 @@ exports/
 
 # Node
 node_modules/
+*.tsbuildinfo
 .next/
 dist/
 build/
