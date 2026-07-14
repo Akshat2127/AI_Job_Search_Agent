@@ -10,6 +10,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
 cp .env.example .env
+alembic upgrade head
 python scripts/import_jobs.py --csv data/sample_jobs.csv
 uvicorn backend.app.main:app --reload --port 8000
 ```
@@ -57,6 +58,8 @@ make check
 ```bash
 docker compose up --build
 ```
+
+Compose starts PostgreSQL, runs Alembic migrations before the API, and serves the React frontend at `http://localhost:3000`. API readiness is available at `http://localhost:8000/api/v1/readiness`.
 
 ## Architecture
 See `docs/PLAN.md` and `docs/ARCHITECTURE.md`.

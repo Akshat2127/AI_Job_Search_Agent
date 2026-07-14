@@ -1,7 +1,10 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, Text, Float, UniqueConstraint
+
+from sqlalchemy import DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
+
 from backend.app.db.session import Base
+
 
 class Job(Base):
     __tablename__ = "jobs"

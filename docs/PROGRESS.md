@@ -5,7 +5,8 @@ Last updated: 2026-07-13.
 ## Milestone status
 
 - Milestone 0 — audit and recovery: complete.
-- Milestones 1–11: not started.
+- Milestone 1 — foundation: complete; commit and push pending.
+- Milestones 2–11: not started.
 
 ## Verified baseline
 
@@ -19,11 +20,11 @@ Last updated: 2026-07-13.
 
 ## Current focus
 
-Durable instructions, product/architecture decisions, gap analysis, repository hygiene, API input-validation repairs, and a buildable/tested frontend baseline are in place. `make check` passes. Broader backend lint/type/CI tooling is Milestone 1 work.
+Milestone 1 includes typed production environment validation, console/JSON logging, request IDs, readiness, `/api/v1` compatibility routes, standardized safe errors, Alembic baseline migration and migration tests, Ruff/mypy, runtime smoke testing, GitHub Actions CI, and health-checked non-root containers. A clean Compose build created PostgreSQL, migrated it to `20260713_0001`, and returned successful live health/readiness/jobs responses through both API and frontend proxy; all three services reached healthy status.
 
 ## Next continuation task
 
-Begin Milestone 1 with typed environment validation, lifecycle-managed database setup, Alembic migration of the legacy `jobs` table, `/api/v1` compatibility routing, structured request logging, standard errors, Ruff/mypy/CI, and Docker health checks.
+Commit and push Milestone 1 after the final `make check`, then begin Milestone 2 with User/Candidate ownership, authentication boundaries, normalized profile/preferences/skills/experience, and resume upload validation.
 
 ## Durable session handoff
 

@@ -1,10 +1,12 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from backend.app.models.job import Job
 from backend.app.schemas.job import JobCreate
-from backend.app.services.scoring import score_job
 from backend.app.services.drafts import build_cover_letter, build_recruiter_message
+from backend.app.services.scoring import score_job
+
 
 def create_job(db: Session, payload: JobCreate) -> Job:
     job = Job(**payload.model_dump())
@@ -14,10 +16,13 @@ def create_job(db: Session, payload: JobCreate) -> Job:
         db.commit()
     except IntegrityError:
         db.rollback()
-        existing = db.execute(select(Job).where(Job.company == payload.company, Job.title == payload.title, Job.url == payload.url)).scalar_one()
+        existing = db.execute(
+            select(Job).where(Job.company == payload.company, Job.title == payload.title, Job.url == payload.url)
+        ).scalar_one()
         return existing
     db.refresh(job)
     return job
+
 
 def enrich_job(job: Job) -> Job:
     score, reason, variant = score_job(job)
@@ -28,7 +33,10 @@ def enrich_job(job: Job) -> Job:
     job.recruiter_message = build_recruiter_message(job)
     return job
 
-def list_jobs(db: Session, min_score: int | None = None, decision: str | None = None, q: str | None = None) -> list[Job]:
+
+def list_jobs(
+    db: Session, min_score: int | None = None, decision: str | None = None, q: str | None = None
+) -> list[Job]:
     stmt = select(Job)
     if min_score is not None:
         stmt = stmt.where(Job.fit_score >= min_score)
