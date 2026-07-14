@@ -5,7 +5,7 @@ Last updated: 2026-07-13.
 ## Milestone status
 
 - Milestone 0 — audit and recovery: complete.
-- Milestone 1 — foundation: complete; commit and push pending.
+- Milestone 1 — foundation: complete and pushed.
 - Milestones 2–11: not started.
 
 ## Verified baseline
@@ -30,7 +30,8 @@ Commit and push Milestone 1 after the final `make check`, then begin Milestone 2
 
 - Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`; its public GitHub page appeared empty on 2026-07-13. No push has been performed.
 - Branch: `feature/production-job-agent`.
-- Last committed checkpoint before the frontend recovery: `2f82ee0 chore: establish audit and repository guardrails`.
+- Latest pushed milestone: `546a934 feat: establish production application foundation`.
+- Earlier recovery checkpoints: `cb210f1 fix: restore tested frontend baseline` and `2f82ee0 chore: establish audit and repository guardrails`.
 - Local ignored `jobagent.db` and generated exports remain available but are no longer tracked. Do not commit them.
 - External accounts, email, calendar, applications, deployments, and paid services have not been accessed or changed.
 - Resume/profile claims remain in the legacy hard-coded draft service and are explicitly identified as an ungrounded risk in `docs/GAP_ANALYSIS.md`; replace them through the candidate knowledge-base/artifact-grounding milestones.
