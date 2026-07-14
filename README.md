@@ -20,6 +20,22 @@ Open:
 http://localhost:8000/docs
 ```
 
+The current FastAPI-served dashboard is available at `http://localhost:8000/`.
+
+## Frontend development
+
+The evolving React/TypeScript client requires Node.js 22. On Homebrew installations, `node@22` is keg-only; add it to the current shell before using npm:
+
+```bash
+export PATH="$(brew --prefix node@22)/bin:$PATH"
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+
+Open `http://localhost:3000`. Keep the API running on port 8000; Vite proxies the current jobs and analytics endpoints during development.
+
+The React client is a tested recovery baseline with summary and job-list loading/error/empty states. It is not yet the complete review dashboard described in the roadmap.
+
 ## Useful commands
 
 ```bash
@@ -27,6 +43,13 @@ python scripts/import_jobs.py --csv data/sample_jobs.csv
 python scripts/run_scoring.py
 python scripts/export_google_sheets.py --out output/google_sheets
 pytest
+```
+
+Run the complete currently configured check suite:
+
+```bash
+export PATH="$(brew --prefix node@22)/bin:$PATH"
+make check
 ```
 
 ## Docker

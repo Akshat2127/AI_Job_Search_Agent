@@ -2,7 +2,7 @@
 
 The authoritative implementation order is Milestones 0–11 in the product brief. `docs/PROGRESS.md` records completion evidence. A checkbox changes only after implementation, tests, documentation, required checks, and a local conventional commit.
 
-- [ ] 0 — Audit and recovery
+- [x] 0 — Audit and recovery
 - [ ] 1 — Configuration, logging, migrations, API foundation, CI, Docker
 - [ ] 2 — Users, ownership, candidate knowledge base, resume ingestion
 - [ ] 3 — Audited ingestion connectors, normalization, provenance, dedupe
