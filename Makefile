@@ -5,6 +5,9 @@ setup:
 run:
 	uvicorn backend.app.main:app --reload --port 8000
 
+migrate:
+	.venv/bin/alembic upgrade head
+
 import:
 	python scripts/import_jobs.py --csv data/sample_jobs.csv
 
@@ -16,6 +19,12 @@ export:
 
 backend-test:
 	.venv/bin/python -m pytest -q
+
+backend-check: backend-test
+	.venv/bin/ruff check backend tests scripts playwright
+	.venv/bin/ruff format --check backend tests scripts playwright
+	.venv/bin/mypy backend/app
+	.venv/bin/python -m scripts.smoke_test
 
 test: backend-test
 	npm --prefix frontend test
@@ -29,6 +38,6 @@ frontend-check:
 	npm --prefix frontend test
 	npm --prefix frontend run build
 
-check: backend-test frontend-check
+check: backend-check frontend-check
 	docker compose config -q
 	git diff --check

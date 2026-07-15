@@ -1,13 +1,15 @@
-import argparse, sys
+import argparse
+import sys
 from pathlib import Path
+
 import pandas as pd
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from backend.app.db.session import Base, engine, SessionLocal
+from backend.app.db.session import SessionLocal
 from backend.app.models.job import Job  # noqa
 from backend.app.schemas.job import JobCreate
 from backend.app.services.jobs import create_job
 
-Base.metadata.create_all(bind=engine)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -19,8 +21,12 @@ def main():
     try:
         for _, row in df.iterrows():
             payload = JobCreate(
-                company=row.get("company", ""), title=row.get("title", ""), location=row.get("location", ""),
-                remote_type=row.get("remote_type", ""), url=row.get("url", ""), source=row.get("source", "csv"),
+                company=row.get("company", ""),
+                title=row.get("title", ""),
+                location=row.get("location", ""),
+                remote_type=row.get("remote_type", ""),
+                url=row.get("url", ""),
+                source=row.get("source", "csv"),
                 description=row.get("description", ""),
             )
             create_job(db, payload)
@@ -28,6 +34,7 @@ def main():
     finally:
         db.close()
     print(f"Imported/processed {count} jobs")
+
 
 if __name__ == "__main__":
     main()

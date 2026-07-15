@@ -29,3 +29,10 @@ Status: accepted, 2026-07-13.
 
 Submission, email sending, and calendar writes require an explicit scoped confirmation immediately before the action. Dry-run and draft creation are separate audited operations. CAPTCHA and access controls always pause automation.
 
+## ADR-004: Candidate-local ingestion identity and retained provenance
+
+Status: accepted, 2026-07-14.
+
+Every ingested job belongs to an owner and candidate. Deduplication is candidate-local because two candidates may independently track the same posting. Canonical URLs and normalized company/title/location fingerprints identify likely duplicates, while every provider/source/external-ID alias is retained as a provenance record with first/last-seen timestamps and a bounded raw payload. Ingestion runs record deterministic counts and owner-scoped audit events.
+
+Legacy jobs remain nullable during the incremental migration and are the only records visible through temporary unauthenticated compatibility routes. New candidate-owned jobs must use authenticated candidate-scoped APIs. The additive migration can be rolled back without modifying legacy job content; ingestion tables and candidate ownership columns are removed on downgrade.

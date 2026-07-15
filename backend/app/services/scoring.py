@@ -1,4 +1,5 @@
 import re
+
 from backend.app.models.job import Job
 from backend.app.services.profile import CANDIDATE_PROFILE
 
@@ -8,8 +9,10 @@ NEGATIVE_PENALTY = 25
 REMOTE_BONUS = 5
 HEALTHCARE_BONUS = 10
 
+
 def normalize(text: str | None) -> str:
     return re.sub(r"\s+", " ", (text or "").lower()).strip()
+
 
 def choose_resume_variant(text: str) -> str:
     if "servicenow" in text or "workflow" in text:
@@ -22,8 +25,11 @@ def choose_resume_variant(text: str) -> str:
         return "public_sector"
     return "healthcare_bsa"
 
+
 def score_job(job: Job) -> tuple[int, str, str]:
-    blob = normalize(" ".join([job.title, job.company, job.location or "", job.remote_type or "", job.description or ""]))
+    blob = normalize(
+        " ".join([job.title, job.company, job.location or "", job.remote_type or "", job.description or ""])
+    )
     score = 35
     reasons = []
 

@@ -1,6 +1,9 @@
 from collections import Counter
+
 from sqlalchemy.orm import Session
+
 from backend.app.services.jobs import list_jobs
+
 
 def summary(db: Session) -> dict:
     jobs = list_jobs(db)

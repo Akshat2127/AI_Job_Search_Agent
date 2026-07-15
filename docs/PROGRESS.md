@@ -1,11 +1,14 @@
 # Implementation Progress
 
-Last updated: 2026-07-13.
+Last updated: 2026-07-14.
 
 ## Milestone status
 
 - Milestone 0 — audit and recovery: complete.
-- Milestones 1–11: not started.
+- Milestone 1 — foundation: complete and pushed.
+- Milestone 2 — users and candidate profiles: complete and pushed.
+- Milestone 3 — ingestion and provenance: in progress; first audited fixture checkpoint implemented.
+- Milestones 4–11: not started.
 
 ## Verified baseline
 
@@ -17,19 +20,61 @@ Last updated: 2026-07-13.
 - The invalid Next.js metadata/JSX placeholder was replaced with a Vite + React + TypeScript recovery baseline. This is not the Milestone 5 dashboard.
 - Working branch: `feature/production-job-agent`.
 
-## Current focus
+## Completed Milestone 2
 
-Durable instructions, product/architecture decisions, gap analysis, repository hygiene, API input-validation repairs, and a buildable/tested frontend baseline are in place. `make check` passes. Broader backend lint/type/CI tooling is Milestone 1 work.
+Milestone 1 includes typed production environment validation, console/JSON logging, request IDs, readiness, `/api/v1` compatibility routes, standardized safe errors, Alembic baseline migration and migration tests, Ruff/mypy, runtime smoke testing, GitHub Actions CI, and health-checked non-root containers. A clean Compose build created PostgreSQL, migrated it to `20260713_0001`, and returned successful live health/readiness/jobs responses through both API and frontend proxy; all three services reached healthy status.
+
+Milestone 2 includes:
+
+- Additive migration `08e8c4b1cf4d` for users, hashed auth sessions, candidate profiles, preferences, skills, employment, application answers, and resumes.
+- Argon2 password hashing, opaque SHA-256-hashed bearer sessions, expiration/revocation, a localhost-only development identity, and production rejection of development auth.
+- Ownership-filtered candidate APIs that return 404 across ownership boundaries.
+- Nullable work-authorization and sponsorship settings; sensitive answers always require per-use confirmation.
+- PDF/DOCX upload size/type/signature/path validation, local gitignored storage, text extraction, and mandatory `needs_review` state.
+- Isolated in-memory test database plus authentication, ownership, preference, sensitive-answer, DOCX parsing, invalid-upload, and migration coverage. Fifteen backend tests pass at this checkpoint.
+
+Migration `8a8bf14544a8` adds projects, education, certifications, owner-scoped audit events, resume version metadata, exact-file duplicate rejection, and physical file cleanup on deletion. The React client has a candidate workspace for profile creation/selection, preferences, confirmed skills, employment, projects, education, certifications, sensitive application answers, resume upload/review/master management, and audit activity.
+
+Browser authentication hardening now includes SameSite=Strict HttpOnly session cookies, double-submit CSRF enforcement for cookie-authenticated mutations, per-session logout/revocation, production secure-cookie validation, credential-aware frontend requests, and sign-in/sign-out controls. Bearer API clients remain supported. Eighteen backend tests pass after this slice.
+
+Resume review exposes extracted text for explicit approval/rejection in the candidate workspace. An approved resume can be promoted as the candidate's sole master; master text becomes immutable, requiring a new sequentially numbered uploaded version for changes. Labels support named variants, and review and promotion actions remain audited.
+
+Account recovery, email verification, login throttling, and OAuth remain later authentication-hardening work; password/cookie mode must remain behind TLS and a reverse proxy in production.
+
+Final Milestone 2 verification on 2026-07-14:
+
+- `make check`: 18 backend tests and 4 frontend tests passed; Ruff lint/format, mypy across 39 source files, runtime smoke, ESLint, TypeScript, Vite production build, Compose configuration, and diff checks passed. One upstream Starlette `TestClient` deprecation warning remains.
+- `docker compose up --build --detach`: API, PostgreSQL, and frontend built and reached healthy status.
+- `docker compose exec -T api alembic current`: PostgreSQL reported `8a8bf14544a8 (head)`.
+- Live `/api/v1/health`, `/api/v1/readiness`, and frontend `/health` checks passed.
+- Frontend-proxied registration, browser cookie login, `/auth/me`, and authenticated `/candidates` checks passed. Unauthenticated candidate access correctly returned HTTP 401.
+
+## Milestone 3 checkpoint
+
+Migration `20260714_0003` adds candidate-owned ingestion runs, job ownership/canonicalization fields, and source provenance records that preserve aliases and bounded raw fixture payloads. The fixture ingestion API normalizes HTML descriptions to plain text, removes common tracking parameters from canonical URLs, applies deterministic candidate-local URL/fingerprint deduplication, records run counts, and emits owner-scoped audit events. Candidate-owned jobs are excluded from every temporary unauthenticated legacy job route.
+
+Migration `20260714_0004` adds persisted safe connector failure state. Greenhouse and Lever now use fixed HTTPS provider hosts, strict source keys, injected HTTP/clock dependencies, connect/read timeouts, bounded retries and backoff, request pacing, provider result limits, response-shape validation, and deterministic tests. Lever follows documented `skip`/`limit` pagination. Authenticated connector execution and completed/failed run history are available in the candidate workspace; no application submission endpoint is called or exposed.
+
+The deeper 2026-07-14 end-to-end validation also found and fixed two deployment defects: development CORS now permits `PUT` and `X-CSRF-Token`, and Compose stores resume files in a durable named volume. A live browser-cookie workflow covered every candidate domain, sensitive-answer confirmation, DOCX extraction/review/master promotion, duplicate rejection, audit events, CSRF failure, cross-owner 404 isolation, and database/file persistence across rebuild and restart.
+
+Verification after this checkpoint:
+
+- `make check`: 25 backend tests and 4 frontend tests passed; Ruff, formatting, mypy across 42 source files, isolated from-zero migration/runtime smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks passed.
+- PostgreSQL migrated to `20260714_0004 (head)` and all containers reached healthy status.
+- Live fixture ingestion produced `2 discovered / 1 created / 1 duplicate`; the identical rerun produced `0 created / 2 duplicates`.
+- Live public Lever demo ingestion produced `388 discovered / 358 created / 30 duplicates`; the identical rerun produced `0 created / 388 duplicates`. A nonexistent Greenhouse board returned a safe HTTP 502, persisted `upstream_http_error`, and emitted `ingestion.failed` without exposing candidate-owned jobs through legacy routes.
+- The pre-existing resume database record and physical DOCX remained available after API recreation and restart.
 
 ## Next continuation task
 
-Begin Milestone 1 with typed environment validation, lifecycle-managed database setup, Alembic migration of the legacy `jobs` table, `/api/v1` compatibility routing, structured request logging, standard errors, Ruff/mypy/CI, and Docker health checks.
+Continue Milestone 3 with saved source configurations, explicit enable/disable controls, idempotent scheduled worker execution, freshness/closure tracking, and candidate-scoped job review APIs. Add pagination to run/job reads before marking the milestone complete.
 
 ## Durable session handoff
 
-- Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`; its public GitHub page appeared empty on 2026-07-13. No push has been performed.
+- Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`.
 - Branch: `feature/production-job-agent`.
-- Last committed checkpoint before the frontend recovery: `2f82ee0 chore: establish audit and repository guardrails`.
+- Latest pushed milestone: `9713dcf feat: complete candidate profile management`.
+- Earlier recovery checkpoints: `cb210f1 fix: restore tested frontend baseline` and `2f82ee0 chore: establish audit and repository guardrails`.
 - Local ignored `jobagent.db` and generated exports remain available but are no longer tracked. Do not commit them.
 - External accounts, email, calendar, applications, deployments, and paid services have not been accessed or changed.
 - Resume/profile claims remain in the legacy hard-coded draft service and are explicitly identified as an ungrounded risk in `docs/GAP_ANALYSIS.md`; replace them through the candidate knowledge-base/artifact-grounding milestones.

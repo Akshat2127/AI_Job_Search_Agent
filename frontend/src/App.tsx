@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getJobs, getSummary, type AnalyticsSummary, type Job } from './api'
+import CandidateProfiles from './CandidateProfiles'
+import AuthControls from './AuthControls'
 import './styles.css'
 
 type LoadState =
@@ -12,6 +14,7 @@ const initialState: LoadState = { status: 'loading' }
 export default function App() {
   const [state, setState] = useState<LoadState>(initialState)
   const [reloadKey, setReloadKey] = useState(0)
+  const [view, setView] = useState<'jobs' | 'profiles'>('jobs')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -42,10 +45,16 @@ export default function App() {
           <p className="eyebrow">Human-controlled job search</p>
           <h1>JobAgent AI</h1>
         </div>
-        <a href="http://localhost:8000/docs">API documentation</a>
+        <nav className="main-nav" aria-label="Primary navigation">
+          <button type="button" className={view === 'jobs' ? 'active' : ''} onClick={() => setView('jobs')}>Jobs</button>
+          <button type="button" className={view === 'profiles' ? 'active' : ''} onClick={() => setView('profiles')}>Candidates</button>
+          <a href="http://localhost:8000/docs">API documentation</a>
+          <AuthControls />
+        </nav>
       </header>
 
       <main>
+        {view === 'profiles' ? <CandidateProfiles /> : <>
         {state.status === 'loading' && <p role="status" className="panel">Loading job workspace…</p>}
 
         {state.status === 'error' && (
@@ -103,6 +112,7 @@ export default function App() {
             </section>
           </>
         )}
+        </>}
       </main>
     </div>
   )

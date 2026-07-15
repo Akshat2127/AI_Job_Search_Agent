@@ -1,7 +1,8 @@
 from datetime import datetime
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
 
 class JobCreate(BaseModel):
     company: str = Field(min_length=1, max_length=255)
@@ -40,11 +41,12 @@ class JobCreate(BaseModel):
 
     @field_validator("salary_max")
     @classmethod
-    def validate_salary_range(cls, value: float | None, info):
+    def validate_salary_range(cls, value: float | None, info: ValidationInfo) -> float | None:
         minimum = info.data.get("salary_min")
         if value is not None and minimum is not None and value < minimum:
             raise ValueError("must be greater than or equal to salary_min")
         return value
+
 
 class JobOut(JobCreate):
     model_config = ConfigDict(from_attributes=True)
@@ -60,8 +62,10 @@ class JobOut(JobCreate):
     created_at: datetime
     updated_at: datetime
 
+
 class DecisionUpdate(BaseModel):
     decision: str = Field(pattern="^(approve|maybe|skip|new|applied|interview|offer|rejected)$")
+
 
 class JobFilters(BaseModel):
     min_score: int | None = None
