@@ -69,9 +69,15 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    if credentials is not None:
-        user = _user_from_bearer(db, credentials.credentials)
+    token = credentials.credentials if credentials is not None else request.cookies.get(settings.session_cookie_name)
+    if token is not None:
+        user = _user_from_bearer(db, token)
         if user is not None:
+            if credentials is None and request.method not in {"GET", "HEAD", "OPTIONS"}:
+                cookie_csrf = request.cookies.get(settings.csrf_cookie_name)
+                header_csrf = request.headers.get(settings.csrf_header_name)
+                if cookie_csrf is None or header_csrf is None or not secrets.compare_digest(cookie_csrf, header_csrf):
+                    raise HTTPException(status.HTTP_403_FORBIDDEN, "CSRF validation failed")
             return user
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired access token")
     if settings.auth_mode == "development":

@@ -42,7 +42,9 @@ The in-progress candidate backend exposes:
 - Candidate-owned projects, education, and certifications use the same nested route structure.
 - `GET /api/v1/audit` returns only the authenticated owner's activity, optionally filtered by candidate.
 
-Password login returns an opaque bearer token; only its SHA-256 digest is stored. Development mode may create one configured local identity, but only for localhost/test clients. Production startup rejects development authentication. Browser cookie/CSRF delivery and the frontend sign-in flow are still pending, so this API must not yet be exposed publicly.
+Password login returns an opaque bearer token for non-browser clients; only its SHA-256 digest is stored. `POST /api/v1/auth/browser-login` instead delivers that token in a SameSite=Strict HttpOnly cookie and sets a readable CSRF cookie. Cookie-authenticated POST/PATCH/PUT/DELETE requests must echo the CSRF value in `X-CSRF-Token`. Logout revokes only the active session and clears both cookies. Production startup rejects development authentication and non-secure session cookies.
+
+Development mode may create one configured local identity, but only for localhost/test clients. The React client checks `/auth/me`, displays sign-in/sign-out controls when appropriate, includes credentials, and attaches CSRF headers to mutations. TLS termination remains mandatory in production.
 
 Resume upload accepts PDF and DOCX up to `MAX_RESUME_BYTES`, validates the declared type, extension, and file signature, extracts text, stores the file below the gitignored `UPLOAD_ROOT`, and marks it `needs_review`. Extracted text is not a confirmed candidate fact until the user approves it.
 

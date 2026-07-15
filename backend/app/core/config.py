@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     auth_mode: str = "development"
     development_user_email: str = "local@jobagent.invalid"
     session_ttl_hours: int = 12
+    session_cookie_secure: bool = False
+    session_cookie_name: str = "jobagent_session"
+    csrf_cookie_name: str = "jobagent_csrf"
+    csrf_header_name: str = "X-CSRF-Token"
     upload_root: str = "./storage/uploads"
     max_resume_bytes: int = 10 * 1024 * 1024
 
@@ -42,6 +46,8 @@ class Settings(BaseSettings):
                 raise ValueError("AUTO_CREATE_TABLES must be false in production; use Alembic")
             if self.auth_mode == "development":
                 raise ValueError("production cannot use AUTH_MODE=development")
+            if not self.session_cookie_secure:
+                raise ValueError("production requires SESSION_COOKIE_SECURE=true")
         return self
 
     @field_validator("auth_mode")

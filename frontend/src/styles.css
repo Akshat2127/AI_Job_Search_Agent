@@ -18,6 +18,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid #84adff; outline-offs
 .main-nav { display: flex; align-items: center; gap: .75rem; }
 .main-nav button { background: transparent; color: #d0d5dd; padding: .45rem .65rem; }
 .main-nav button.active { background: #344054; color: white; }
+.auth-status, .auth-form { display: flex; align-items: center; gap: .5rem; font-size: .8rem; }
+.auth-status button, .auth-form button { padding: .4rem .6rem; }
+.auth-form label { display: grid; color: #d0d5dd; font-size: .7rem; }
+.auth-form input { width: 150px; border: 1px solid #667085; border-radius: .35rem; padding: .3rem; }
+.auth-form [role="alert"] { color: #fda29b; }
 .eyebrow { margin: 0; color: #667085; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .topbar .eyebrow { color: #98a2b3; }
 main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }

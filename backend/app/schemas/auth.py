@@ -23,3 +23,8 @@ class SessionOut(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: UserOut
+
+
+class BrowserSessionOut(BaseModel):
+    expires_in: int
+    user: UserOut

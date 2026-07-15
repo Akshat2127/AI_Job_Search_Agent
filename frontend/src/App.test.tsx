@@ -16,9 +16,12 @@ afterEach(() => {
 
 describe('App', () => {
   it('renders jobs and summary returned by the API', async () => {
-    fetchMock
-      .mockResolvedValueOnce(Response.json([{ id: 1, company: 'Acme', title: 'Business Analyst', location: 'Remote', remote_type: 'Remote', url: 'https://example.com/job', fit_score: 88, score_reason: 'role fit', decision: 'new', status: 'discovered' }]))
-      .mockResolvedValueOnce(Response.json({ total_jobs: 1, excellent_matches: 1, approved: 0, average_score: 88 }))
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/jobs') return Response.json([{ id: 1, company: 'Acme', title: 'Business Analyst', location: 'Remote', remote_type: 'Remote', url: 'https://example.com/job', fit_score: 88, score_reason: 'role fit', decision: 'new', status: 'discovered' }])
+      if (url === '/analytics/summary') return Response.json({ total_jobs: 1, excellent_matches: 1, approved: 0, average_score: 88 })
+      return Response.json({ id: 'user-1', email: 'local@jobagent.invalid' })
+    })
 
     render(<App />)
 
@@ -28,20 +31,26 @@ describe('App', () => {
   })
 
   it('shows a useful empty state', async () => {
-    fetchMock
-      .mockResolvedValueOnce(Response.json([]))
-      .mockResolvedValueOnce(Response.json({ total_jobs: 0, excellent_matches: 0, approved: 0, average_score: 0 }))
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url === '/jobs') return Response.json([])
+      if (url === '/analytics/summary') return Response.json({ total_jobs: 0, excellent_matches: 0, approved: 0, average_score: 0 })
+      return Response.json({ id: 'user-1', email: 'local@jobagent.invalid' })
+    })
 
     render(<App />)
     expect(await screen.findByText(/No jobs have been discovered yet/i)).toBeInTheDocument()
   })
 
   it('shows an error and retries', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('offline')).mockRejectedValueOnce(new Error('offline'))
+    fetchMock.mockImplementation(async (input) => {
+      if (String(input) === '/api/v1/auth/me') return new Response(null, { status: 401 })
+      throw new Error('offline')
+    })
     render(<App />)
 
     expect(await screen.findByRole('alert')).toHaveTextContent('offline')
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(5)
   })
 })

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getJobs, getSummary, type AnalyticsSummary, type Job } from './api'
 import CandidateProfiles from './CandidateProfiles'
+import AuthControls from './AuthControls'
 import './styles.css'
 
 type LoadState =
@@ -48,6 +49,7 @@ export default function App() {
           <button type="button" className={view === 'jobs' ? 'active' : ''} onClick={() => setView('jobs')}>Jobs</button>
           <button type="button" className={view === 'profiles' ? 'active' : ''} onClick={() => setView('profiles')}>Candidates</button>
           <a href="http://localhost:8000/docs">API documentation</a>
+          <AuthControls />
         </nav>
       </header>
 
