@@ -113,6 +113,24 @@ def test_resume_docx_is_extracted_and_requires_review(tmp_path, monkeypatch):
     assert "Confirmed only after user review" in uploaded.json()["extracted_text"]
     assert list(tmp_path.rglob("*.docx"))
 
+    master = client.patch(
+        f"/api/v1/candidates/{candidate['id']}/resumes/{uploaded.json()['id']}",
+        headers=headers,
+        json={
+            "review_status": "approved",
+            "extracted_text": uploaded.json()["extracted_text"],
+            "is_master": True,
+        },
+    )
+    assert master.status_code == 200
+    assert master.json()["is_master"] is True
+    immutable = client.patch(
+        f"/api/v1/candidates/{candidate['id']}/resumes/{uploaded.json()['id']}",
+        headers=headers,
+        json={"review_status": "approved", "extracted_text": "invented replacement"},
+    )
+    assert immutable.status_code == 409
+
     duplicate = client.post(
         f"/api/v1/candidates/{candidate['id']}/resumes",
         headers=headers,

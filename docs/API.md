@@ -49,3 +49,5 @@ Development mode may create one configured local identity, but only for localhos
 Resume upload accepts PDF and DOCX up to `MAX_RESUME_BYTES`, validates the declared type, extension, and file signature, extracts text, stores the file below the gitignored `UPLOAD_ROOT`, and marks it `needs_review`. Extracted text is not a confirmed candidate fact until the user approves it.
 
 Uploading the same file twice for one candidate returns HTTP 409. Deleting a resume removes both its database record and owned local file after path-boundary validation. Resume metadata includes version/master/archive fields; full version promotion remains in progress.
+
+`PATCH /api/v1/candidates/{candidate_id}/resumes/{resume_id}` reviews extracted text and can promote one approved resume as master. Promoting a master demotes the previous master. Master extracted text is immutable; upload a new resume version rather than silently changing confirmed source material.

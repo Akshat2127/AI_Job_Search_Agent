@@ -137,3 +137,11 @@ export async function uploadResume(candidateId: string, file: File): Promise<Res
   }
   return (await response.json()) as Resume
 }
+
+export function reviewResume(
+  candidateId: string,
+  resumeId: string,
+  body: { review_status: string; extracted_text?: string; is_master?: boolean; is_archived?: boolean; label?: string },
+): Promise<Resume> {
+  return sendJson<Resume>(`/api/v1/candidates/${candidateId}/resumes/${resumeId}`, 'PATCH', body)
+}

@@ -6,6 +6,7 @@ import {
   getResumes,
   getSkills,
   savePreferences,
+  reviewResume,
   uploadResume,
   type Candidate,
   type Resume,
@@ -120,6 +121,19 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
     catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not upload resume') }
   }
 
+  async function review(item: Resume, reviewStatus: 'approved' | 'rejected', makeMaster = false) {
+    const textArea = document.getElementById(`resume-text-${item.id}`) as HTMLTextAreaElement | null
+    try {
+      const updated = await reviewResume(candidate.id, item.id, {
+        review_status: reviewStatus,
+        extracted_text: textArea?.value,
+        is_master: makeMaster,
+      })
+      setResumes((items) => items.map((resume) => resume.id === updated.id ? updated : { ...resume, is_master: makeMaster ? false : resume.is_master }))
+      onError(null)
+    } catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not review resume') }
+  }
+
   return <div className="profile-sections">
     <section className="panel"><p className="eyebrow">Selected candidate</p><h2>{candidate.display_name}</h2><p>{candidate.headline}</p></section>
     <section className="panel"><h3>Search preferences</h3><form className="stacked-form" onSubmit={updatePreferences}>
@@ -131,7 +145,11 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
     <section className="panel"><h3>Confirmed skills</h3><div className="tag-list">{skills.map((skill) => <span className="decision" key={skill.id}>{skill.name}</span>)}</div>
       <form className="inline-form" onSubmit={addSkill}><label>Skill<input name="skill" required /></label><button type="submit">Add</button></form></section>
     <section className="panel"><h3>Resume library</h3><p className="muted">Extracted text is unconfirmed until reviewed.</p>
-      {resumes.length === 0 ? <p>No resumes uploaded.</p> : resumes.map((resume) => <article className="resume-row" key={resume.id}><strong>{resume.original_filename}</strong><span className="decision">{resume.review_status}</span></article>)}
+      {resumes.length === 0 ? <p>No resumes uploaded.</p> : resumes.map((resume) => <article className="resume-card" key={resume.id}>
+        <div className="resume-row"><strong>{resume.original_filename}</strong><span className="decision">{resume.is_master ? 'approved master' : resume.review_status}</span></div>
+        <label>Extracted text<textarea id={`resume-text-${resume.id}`} defaultValue={resume.extracted_text} disabled={resume.is_master} /></label>
+        {!resume.is_master && <div className="inline-form"><button type="button" onClick={() => review(resume, 'approved')}>Approve text</button><button type="button" onClick={() => review(resume, 'approved', true)}>Approve as master</button><button type="button" className="secondary" onClick={() => review(resume, 'rejected')}>Reject</button></div>}
+      </article>)}
       <form className="inline-form" onSubmit={addResume}><label>PDF or DOCX<input name="resume" type="file" accept=".pdf,.docx" required /></label><button type="submit">Upload</button></form></section>
   </div>
 }

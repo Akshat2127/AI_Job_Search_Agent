@@ -36,11 +36,13 @@ The next Milestone 2 slice adds migration `8a8bf14544a8`, projects, education, c
 
 Browser authentication hardening now includes SameSite=Strict HttpOnly session cookies, double-submit CSRF enforcement for cookie-authenticated mutations, per-session logout/revocation, production secure-cookie validation, credential-aware frontend requests, and sign-in/sign-out controls. Bearer API clients remain supported. Eighteen backend tests pass after this slice.
 
-This is not the completed Milestone 2 UI. Experience/project/education/certification/application-answer editing and extracted-text review still need frontend screens. Resume master/version selection needs workflows beyond stored metadata. Account recovery, email verification, login throttling, and OAuth are later authentication-hardening work; password/cookie mode must still remain behind TLS and a reverse proxy in production.
+Resume review now exposes extracted text for explicit approval/rejection in the candidate workspace. An approved resume can be promoted as the candidate's sole master; master text becomes immutable, requiring a new uploaded version for changes. Review and promotion actions remain audited.
+
+This is not the completed Milestone 2 UI. Experience/project/education/certification/application-answer editing still needs frontend screens. Named resume-variant creation remains beyond master selection. Account recovery, email verification, login throttling, and OAuth are later authentication-hardening work; password/cookie mode must still remain behind TLS and a reverse proxy in production.
 
 ## Next continuation task
 
-Continue Milestone 2 with the remaining knowledge-domain editors and extracted-resume text approval. Add resume master/version workflows and audit UI, then run `make check` plus Compose migration verification before marking the milestone complete.
+Continue Milestone 2 with the remaining knowledge-domain editors, named resume variants, and audit UI, then run `make check` plus Compose migration verification before marking the milestone complete.
 
 ## Durable session handoff
 

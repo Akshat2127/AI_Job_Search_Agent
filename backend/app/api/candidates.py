@@ -240,9 +240,21 @@ def review_resume(
     resume = next((item for item in service.list_resumes(db, candidate) if item.id == resume_id), None)
     if resume is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
+    if resume.is_master and payload.extracted_text is not None and payload.extracted_text != resume.extracted_text:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Master resume text is immutable; upload a new version")
+    if payload.is_master and payload.review_status != "approved":
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "A master resume must be approved")
     resume.review_status = payload.review_status
     if payload.extracted_text is not None:
         resume.extracted_text = payload.extracted_text
+    if payload.label is not None:
+        resume.label = payload.label
+    if payload.is_archived is not None:
+        resume.is_archived = payload.is_archived
+    if payload.is_master:
+        for other in service.list_resumes(db, candidate):
+            other.is_master = other.id == resume.id
+        resume.is_archived = False
     record_event(
         db,
         owner_id=user.id,

@@ -182,3 +182,6 @@ class ResumeOut(BaseModel):
 class ResumeReviewUpdate(BaseModel):
     review_status: str = Field(pattern=r"^(approved|rejected|needs_review)$")
     extracted_text: str | None = Field(default=None, max_length=200000)
+    label: str | None = Field(default=None, max_length=255)
+    is_master: bool | None = None
+    is_archived: bool | None = None
