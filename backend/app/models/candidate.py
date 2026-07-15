@@ -37,6 +37,9 @@ class CandidateProfile(Base):
     experiences: Mapped[list[EmploymentExperience]] = relationship(
         back_populates="candidate", cascade="all, delete-orphan"
     )
+    projects: Mapped[list[ProjectExperience]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
+    education: Mapped[list[Education]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
+    certifications: Mapped[list[Certification]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
     answers: Mapped[list[ApplicationAnswer]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
     resumes: Mapped[list[Resume]] = relationship(back_populates="candidate", cascade="all, delete-orphan")
 
@@ -95,6 +98,55 @@ class EmploymentExperience(Base):
     candidate: Mapped[CandidateProfile] = relationship(back_populates="experiences")
 
 
+class ProjectExperience(Base):
+    __tablename__ = "project_experiences"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
+    candidate_id: Mapped[str] = mapped_column(ForeignKey("candidate_profiles.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(50), default="user", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+
+    candidate: Mapped[CandidateProfile] = relationship(back_populates="projects")
+
+
+class Education(Base):
+    __tablename__ = "education"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
+    candidate_id: Mapped[str] = mapped_column(ForeignKey("candidate_profiles.id", ondelete="CASCADE"), index=True)
+    institution: Mapped[str] = mapped_column(String(255))
+    degree: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    field_of_study: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    end_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(50), default="user", nullable=False)
+
+    candidate: Mapped[CandidateProfile] = relationship(back_populates="education")
+
+
+class Certification(Base):
+    __tablename__ = "certifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
+    candidate_id: Mapped[str] = mapped_column(ForeignKey("candidate_profiles.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    issuer: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    issued_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    expires_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    credential_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    source: Mapped[str] = mapped_column(String(50), default="user", nullable=False)
+
+    candidate: Mapped[CandidateProfile] = relationship(back_populates="certifications")
+
+
 class ApplicationAnswer(Base):
     __tablename__ = "application_answers"
     __table_args__ = (UniqueConstraint("candidate_id", "question_key", name="uq_candidate_answer_key"),)
@@ -114,6 +166,7 @@ class ApplicationAnswer(Base):
 
 class Resume(Base):
     __tablename__ = "resumes"
+    __table_args__ = (UniqueConstraint("candidate_id", "sha256", name="uq_candidate_resume_hash"),)
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
     candidate_id: Mapped[str] = mapped_column(ForeignKey("candidate_profiles.id", ondelete="CASCADE"), index=True)
@@ -124,6 +177,10 @@ class Resume(Base):
     sha256: Mapped[str] = mapped_column(String(64), index=True)
     extracted_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
     review_status: Mapped[str] = mapped_column(String(30), default="needs_review", nullable=False)
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    version_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    is_master: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     candidate: Mapped[CandidateProfile] = relationship(back_populates="resumes")

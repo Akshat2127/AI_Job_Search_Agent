@@ -98,6 +98,55 @@ class ExperienceOut(ExperienceCreate):
     created_at: datetime
 
 
+class ProjectCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    role: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=20000)
+    start_date: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2})?$")
+    end_date: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2})?$")
+
+
+class ProjectOut(ProjectCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    confirmed: bool
+    source: str
+    created_at: datetime
+
+
+class EducationCreate(BaseModel):
+    institution: str = Field(min_length=1, max_length=255)
+    degree: str | None = Field(default=None, max_length=255)
+    field_of_study: str | None = Field(default=None, max_length=255)
+    start_date: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2})?$")
+    end_date: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2})?$")
+
+
+class EducationOut(EducationCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    confirmed: bool
+    source: str
+
+
+class CertificationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    issuer: str | None = Field(default=None, max_length=255)
+    issued_date: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2})?$")
+    expires_date: str | None = Field(default=None, pattern=r"^\d{4}(-\d{2})?$")
+    credential_id: str | None = Field(default=None, max_length=255)
+
+
+class CertificationOut(CertificationCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    confirmed: bool
+    source: str
+
+
 class AnswerCreate(BaseModel):
     question_key: str = Field(min_length=1, max_length=100, pattern=r"^[a-z0-9_]+$")
     answer: str = Field(min_length=1, max_length=10000)
@@ -123,6 +172,10 @@ class ResumeOut(BaseModel):
     sha256: str
     extracted_text: str
     review_status: str
+    label: str | None
+    version_number: int
+    is_master: bool
+    is_archived: bool
     created_at: datetime
 
 

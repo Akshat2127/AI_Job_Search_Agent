@@ -32,11 +32,13 @@ Milestone 2 backend checkpoint includes:
 - PDF/DOCX upload size/type/signature/path validation, local gitignored storage, text extraction, and mandatory `needs_review` state.
 - Isolated in-memory test database plus authentication, ownership, preference, sensitive-answer, DOCX parsing, invalid-upload, and migration coverage. Fifteen backend tests pass at this checkpoint.
 
-This is not the completed Milestone 2 UI or domain model. Education, certifications, projects, resume duplicate handling/versioning, deletion/storage cleanup, audit events, frontend profile screens, and production session delivery hardening remain.
+The next Milestone 2 slice adds migration `8a8bf14544a8`, projects, education, certifications, owner-scoped audit events, resume version metadata, exact-file duplicate rejection, and physical file cleanup on deletion. The React client now has a candidate workspace for profile creation/selection, search preferences, confirmed skills, and PDF/DOCX upload with visible review state. Sixteen backend and four frontend tests pass.
+
+This is not the completed Milestone 2 UI or authentication delivery. Experience/project/education/certification/application-answer editing and extracted-text review still need frontend screens. Resume master/version selection needs workflows beyond stored metadata. Browser sign-in must move from JavaScript bearer delivery to secure cookie/CSRF handling before public production exposure.
 
 ## Next continuation task
 
-Continue Milestone 2 by adding education/certification/project models, resume duplicate/version and deletion behavior, audit events, secure cookie/CSRF-capable browser session delivery, and the candidate profile/resume frontend. Expand API documentation and isolation tests, run `make check` plus Compose migration verification, then commit the completed milestone.
+Continue Milestone 2 with secure cookie/CSRF-capable browser sessions, frontend sign-in/logout, the remaining knowledge-domain editors, and extracted-resume text approval. Add resume master/version workflows and audit UI, then run `make check` plus Compose migration verification before marking the milestone complete.
 
 ## Durable session handoff
 

@@ -80,6 +80,10 @@ def test_candidate_records_are_not_visible_to_another_user():
         item["id"] != candidate_id
         for item in client.get("/api/v1/candidates", headers=authorization(other_token)).json()
     )
+    owner_audit = client.get("/api/v1/audit", headers=authorization(owner_token)).json()
+    other_audit = client.get("/api/v1/audit", headers=authorization(other_token)).json()
+    assert any(event["entity_id"] == candidate_id and event["action"] == "candidate.created" for event in owner_audit)
+    assert all(event["entity_id"] != candidate_id for event in other_audit)
 
 
 def test_resume_docx_is_extracted_and_requires_review(tmp_path, monkeypatch):
@@ -109,6 +113,23 @@ def test_resume_docx_is_extracted_and_requires_review(tmp_path, monkeypatch):
     assert "Confirmed only after user review" in uploaded.json()["extracted_text"]
     assert list(tmp_path.rglob("*.docx"))
 
+    duplicate = client.post(
+        f"/api/v1/candidates/{candidate['id']}/resumes",
+        headers=headers,
+        files={
+            "file": (
+                "master.docx",
+                content.getvalue(),
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert duplicate.status_code == 409
+
+    deleted = client.delete(f"/api/v1/candidates/{candidate['id']}/resumes/{uploaded.json()['id']}", headers=headers)
+    assert deleted.status_code == 204
+    assert not list(tmp_path.rglob("*.docx"))
+
 
 def test_resume_rejects_mismatched_content(tmp_path, monkeypatch):
     monkeypatch.setattr("backend.app.services.resumes.settings.upload_root", str(tmp_path))
@@ -124,3 +145,32 @@ def test_resume_rejects_mismatched_content(tmp_path, monkeypatch):
 
     assert response.status_code == 422
     assert not list(tmp_path.rglob("*.*"))
+
+
+def test_candidate_knowledge_domains_are_user_confirmed():
+    token = create_account("knowledge-owner@example.com")
+    headers = authorization(token)
+    candidate_id = client.post(
+        "/api/v1/candidates", headers=headers, json={"display_name": "Knowledge Candidate"}
+    ).json()["id"]
+
+    project = client.post(
+        f"/api/v1/candidates/{candidate_id}/projects",
+        headers=headers,
+        json={"name": "Portal modernization", "role": "Business analyst"},
+    )
+    education = client.post(
+        f"/api/v1/candidates/{candidate_id}/education",
+        headers=headers,
+        json={"institution": "User-provided institution", "degree": None},
+    )
+    certification = client.post(
+        f"/api/v1/candidates/{candidate_id}/certifications",
+        headers=headers,
+        json={"name": "User-provided certification", "issuer": None},
+    )
+
+    assert project.status_code == education.status_code == certification.status_code == 201
+    assert project.json()["confirmed"] is True
+    assert education.json()["confirmed"] is True
+    assert certification.json()["confirmed"] is True

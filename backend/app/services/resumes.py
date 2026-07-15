@@ -6,11 +6,13 @@ from pathlib import Path
 from docx import Document
 from fastapi import UploadFile
 from pypdf import PdfReader
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
 from backend.app.models.candidate import CandidateProfile, Resume
 from backend.app.models.identity import uuid_string
+from backend.app.services.audit import record_event
 
 PDF_TYPE = "application/pdf"
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -18,6 +20,10 @@ ALLOWED_TYPES = {PDF_TYPE: ".pdf", DOCX_TYPE: ".docx"}
 
 
 class ResumeValidationError(ValueError):
+    pass
+
+
+class ResumeDuplicateError(ValueError):
     pass
 
 
@@ -60,6 +66,12 @@ async def store_resume(db: Session, candidate: CandidateProfile, upload: UploadF
         raise ResumeValidationError(f"Resume exceeds the {settings.max_resume_bytes}-byte limit")
     _validate_signature(content, media_type)
     text = extract_text(content, media_type)
+    digest = hashlib.sha256(content).hexdigest()
+    duplicate = db.execute(
+        select(Resume.id).where(Resume.candidate_id == candidate.id, Resume.sha256 == digest)
+    ).scalar_one_or_none()
+    if duplicate is not None:
+        raise ResumeDuplicateError("This exact resume has already been uploaded for the candidate")
 
     storage_root = Path(settings.upload_root).resolve()
     candidate_dir = (storage_root / candidate.owner_id / candidate.id).resolve()
@@ -75,11 +87,29 @@ async def store_resume(db: Session, candidate: CandidateProfile, upload: UploadF
         storage_key=str(storage_path.relative_to(storage_root)),
         media_type=media_type,
         byte_size=len(content),
-        sha256=hashlib.sha256(content).hexdigest(),
+        sha256=digest,
         extracted_text=text,
         review_status="needs_review",
     )
     db.add(resume)
+    db.flush()
+    record_event(
+        db,
+        owner_id=candidate.owner_id,
+        candidate_id=candidate.id,
+        action="resume.uploaded",
+        entity_type="resume",
+        entity_id=resume.id,
+        metadata={"media_type": media_type, "byte_size": len(content), "sha256": digest},
+    )
     db.commit()
     db.refresh(resume)
     return resume
+
+
+def delete_resume_file(resume: Resume) -> None:
+    storage_root = Path(settings.upload_root).resolve()
+    storage_path = (storage_root / resume.storage_key).resolve()
+    if storage_root not in storage_path.parents:
+        raise ResumeValidationError("Invalid resume storage path")
+    storage_path.unlink(missing_ok=True)

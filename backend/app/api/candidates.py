@@ -7,7 +7,10 @@ from backend.app.models.candidate import (
     CandidatePreference,
     CandidateProfile,
     CandidateSkill,
+    Certification,
+    Education,
     EmploymentExperience,
+    ProjectExperience,
     Resume,
 )
 from backend.app.models.identity import User
@@ -17,10 +20,16 @@ from backend.app.schemas.candidate import (
     CandidateCreate,
     CandidateOut,
     CandidateUpdate,
+    CertificationCreate,
+    CertificationOut,
+    EducationCreate,
+    EducationOut,
     ExperienceCreate,
     ExperienceOut,
     PreferenceInput,
     PreferenceOut,
+    ProjectCreate,
+    ProjectOut,
     ResumeOut,
     ResumeReviewUpdate,
     SkillCreate,
@@ -28,7 +37,8 @@ from backend.app.schemas.candidate import (
 )
 from backend.app.security.auth import get_current_user
 from backend.app.services import candidates as service
-from backend.app.services.resumes import ResumeValidationError, store_resume
+from backend.app.services.audit import record_event
+from backend.app.services.resumes import ResumeDuplicateError, ResumeValidationError, delete_resume_file, store_resume
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -130,6 +140,57 @@ def experiences(
     return service.list_experiences(db, require_candidate(candidate_id, user, db))
 
 
+@router.post("/{candidate_id}/projects", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
+def create_project(
+    candidate_id: str,
+    payload: ProjectCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ProjectExperience:
+    return service.add_project(db, require_candidate(candidate_id, user, db), payload)
+
+
+@router.get("/{candidate_id}/projects", response_model=list[ProjectOut])
+def projects(
+    candidate_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[ProjectExperience]:
+    return service.list_projects(db, require_candidate(candidate_id, user, db))
+
+
+@router.post("/{candidate_id}/education", response_model=EducationOut, status_code=status.HTTP_201_CREATED)
+def create_education(
+    candidate_id: str,
+    payload: EducationCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Education:
+    return service.add_education(db, require_candidate(candidate_id, user, db), payload)
+
+
+@router.get("/{candidate_id}/education", response_model=list[EducationOut])
+def education(
+    candidate_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[Education]:
+    return service.list_education(db, require_candidate(candidate_id, user, db))
+
+
+@router.post("/{candidate_id}/certifications", response_model=CertificationOut, status_code=status.HTTP_201_CREATED)
+def create_certification(
+    candidate_id: str,
+    payload: CertificationCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Certification:
+    return service.add_certification(db, require_candidate(candidate_id, user, db), payload)
+
+
+@router.get("/{candidate_id}/certifications", response_model=list[CertificationOut])
+def certifications(
+    candidate_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> list[Certification]:
+    return service.list_certifications(db, require_candidate(candidate_id, user, db))
+
+
 @router.put("/{candidate_id}/answers", response_model=AnswerOut)
 def put_answer(
     candidate_id: str,
@@ -156,6 +217,8 @@ async def upload_resume(
 ) -> Resume:
     try:
         return await store_resume(db, require_candidate(candidate_id, user, db), file)
+    except ResumeDuplicateError as error:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(error)) from error
     except ResumeValidationError as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
 
@@ -180,6 +243,39 @@ def review_resume(
     resume.review_status = payload.review_status
     if payload.extracted_text is not None:
         resume.extracted_text = payload.extracted_text
+    record_event(
+        db,
+        owner_id=user.id,
+        candidate_id=candidate.id,
+        action="resume.reviewed",
+        entity_type="resume",
+        entity_id=resume.id,
+        metadata={"review_status": payload.review_status},
+    )
     db.commit()
     db.refresh(resume)
     return resume
+
+
+@router.delete("/{candidate_id}/resumes/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_resume(
+    candidate_id: str,
+    resume_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    candidate = require_candidate(candidate_id, user, db)
+    resume = next((item for item in service.list_resumes(db, candidate) if item.id == resume_id), None)
+    if resume is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resume not found")
+    delete_resume_file(resume)
+    record_event(
+        db,
+        owner_id=user.id,
+        candidate_id=candidate.id,
+        action="resume.deleted",
+        entity_type="resume",
+        entity_id=resume.id,
+    )
+    db.delete(resume)
+    db.commit()
