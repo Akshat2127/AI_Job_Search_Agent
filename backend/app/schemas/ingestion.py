@@ -14,9 +14,14 @@ class IngestionRecordInput(BaseModel):
 
 
 class IngestionRequest(BaseModel):
-    provider: str = Field(pattern=r"^(fixture|greenhouse|lever)$")
+    provider: str = Field(pattern=r"^fixture$")
     source_key: str = Field(min_length=1, max_length=255)
     records: list[IngestionRecordInput] = Field(min_length=1, max_length=1000)
+
+
+class ConnectorRunRequest(BaseModel):
+    provider: str = Field(pattern=r"^(greenhouse|lever)$")
+    source_key: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 
 class IngestionRunOut(BaseModel):
@@ -30,5 +35,7 @@ class IngestionRunOut(BaseModel):
     discovered_count: int
     created_count: int
     duplicate_count: int
+    error_code: str | None
+    error_message: str | None
     started_at: datetime
     completed_at: datetime | None

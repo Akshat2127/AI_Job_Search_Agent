@@ -53,18 +53,21 @@ Final Milestone 2 verification on 2026-07-14:
 
 Migration `20260714_0003` adds candidate-owned ingestion runs, job ownership/canonicalization fields, and source provenance records that preserve aliases and bounded raw fixture payloads. The fixture ingestion API normalizes HTML descriptions to plain text, removes common tracking parameters from canonical URLs, applies deterministic candidate-local URL/fingerprint deduplication, records run counts, and emits owner-scoped audit events. Candidate-owned jobs are excluded from every temporary unauthenticated legacy job route.
 
+Migration `20260714_0004` adds persisted safe connector failure state. Greenhouse and Lever now use fixed HTTPS provider hosts, strict source keys, injected HTTP/clock dependencies, connect/read timeouts, bounded retries and backoff, request pacing, provider result limits, response-shape validation, and deterministic tests. Lever follows documented `skip`/`limit` pagination. Authenticated connector execution and completed/failed run history are available in the candidate workspace; no application submission endpoint is called or exposed.
+
 The deeper 2026-07-14 end-to-end validation also found and fixed two deployment defects: development CORS now permits `PUT` and `X-CSRF-Token`, and Compose stores resume files in a durable named volume. A live browser-cookie workflow covered every candidate domain, sensitive-answer confirmation, DOCX extraction/review/master promotion, duplicate rejection, audit events, CSRF failure, cross-owner 404 isolation, and database/file persistence across rebuild and restart.
 
 Verification after this checkpoint:
 
-- `make check`: 20 backend tests and 4 frontend tests passed; Ruff, formatting, mypy across 42 source files, isolated from-zero migration/runtime smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks passed.
-- PostgreSQL migrated to `20260714_0003 (head)` and all containers reached healthy status.
+- `make check`: 25 backend tests and 4 frontend tests passed; Ruff, formatting, mypy across 42 source files, isolated from-zero migration/runtime smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks passed.
+- PostgreSQL migrated to `20260714_0004 (head)` and all containers reached healthy status.
 - Live fixture ingestion produced `2 discovered / 1 created / 1 duplicate`; the identical rerun produced `0 created / 2 duplicates`.
+- Live public Lever demo ingestion produced `388 discovered / 358 created / 30 duplicates`; the identical rerun produced `0 created / 388 duplicates`. A nonexistent Greenhouse board returned a safe HTTP 502, persisted `upstream_http_error`, and emitted `ingestion.failed` without exposing candidate-owned jobs through legacy routes.
 - The pre-existing resume database record and physical DOCX remained available after API recreation and restart.
 
 ## Next continuation task
 
-Continue Milestone 3 by hardening the Greenhouse and Lever clients with injected HTTP transports, SSRF-safe source configuration, pagination, bounded retries/backoff and rate limits, then expose credential-free connector execution with deterministic fakes and run-failure auditing.
+Continue Milestone 3 with saved source configurations, explicit enable/disable controls, idempotent scheduled worker execution, freshness/closure tracking, and candidate-scoped job review APIs. Add pagination to run/job reads before marking the milestone complete.
 
 ## Durable session handoff
 

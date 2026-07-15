@@ -56,6 +56,18 @@ export interface Education { id: string; institution: string; degree: string | n
 export interface Certification { id: string; name: string; issuer: string | null; confirmed: boolean }
 export interface ApplicationAnswer { id: string; question_key: string; answer: string; sensitive: boolean; require_confirmation_each_time: boolean }
 export interface AuditEvent { id: string; action: string; entity_type: string; entity_id: string | null; created_at: string }
+export interface IngestionRun {
+  id: string
+  provider: 'fixture' | 'greenhouse' | 'lever'
+  source_key: string
+  status: 'running' | 'completed' | 'failed'
+  discovered_count: number
+  created_count: number
+  duplicate_count: number
+  error_code: string | null
+  error_message: string | null
+  started_at: string
+}
 
 function csrfToken(): string | null {
   const prefix = 'jobagent_csrf='
@@ -142,6 +154,10 @@ export function createCertification(candidateId: string, body: { name: string; i
 export function getAnswers(candidateId: string): Promise<ApplicationAnswer[]> { return getJson(`/api/v1/candidates/${candidateId}/answers`) }
 export function saveAnswer(candidateId: string, body: { question_key: string; answer: string; sensitive: boolean }): Promise<ApplicationAnswer> { return sendJson(`/api/v1/candidates/${candidateId}/answers`, 'PUT', body) }
 export function getAudit(candidateId: string): Promise<AuditEvent[]> { return getJson(`/api/v1/audit?candidate_id=${encodeURIComponent(candidateId)}`) }
+export function getIngestionRuns(candidateId: string): Promise<IngestionRun[]> { return getJson(`/api/v1/candidates/${candidateId}/ingestion-runs`) }
+export function executeConnector(candidateId: string, provider: 'greenhouse' | 'lever', sourceKey: string): Promise<IngestionRun> {
+  return sendJson(`/api/v1/candidates/${candidateId}/connector-runs`, 'POST', { provider, source_key: sourceKey })
+}
 
 export async function uploadResume(candidateId: string, file: File): Promise<Resume> {
   const body = new FormData()

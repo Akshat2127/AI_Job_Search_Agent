@@ -6,12 +6,14 @@ import {
   createExperience,
   createProject,
   createSkill,
+  executeConnector,
   getAnswers,
   getAudit,
   getCandidates,
   getCertifications,
   getEducation,
   getExperiences,
+  getIngestionRuns,
   getProjects,
   getResumes,
   getSkills,
@@ -25,6 +27,7 @@ import {
   type Certification,
   type Education,
   type Experience,
+  type IngestionRun,
   type Project,
   type Resume,
   type Skill,
@@ -106,12 +109,14 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
   const [certifications, setCertifications] = useState<Certification[]>([])
   const [answers, setAnswers] = useState<ApplicationAnswer[]>([])
   const [activity, setActivity] = useState<AuditEvent[]>([])
+  const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>([])
+  const [connectorRunning, setConnectorRunning] = useState(false)
 
   useEffect(() => {
-    Promise.all([getSkills(candidate.id), getResumes(candidate.id), getExperiences(candidate.id), getProjects(candidate.id), getEducation(candidate.id), getCertifications(candidate.id), getAnswers(candidate.id), getAudit(candidate.id)])
-      .then(([skillItems, resumeItems, experienceItems, projectItems, educationItems, certificationItems, answerItems, auditItems]) => {
+    Promise.all([getSkills(candidate.id), getResumes(candidate.id), getExperiences(candidate.id), getProjects(candidate.id), getEducation(candidate.id), getCertifications(candidate.id), getAnswers(candidate.id), getAudit(candidate.id), getIngestionRuns(candidate.id)])
+      .then(([skillItems, resumeItems, experienceItems, projectItems, educationItems, certificationItems, answerItems, auditItems, runItems]) => {
         setSkills(skillItems); setResumes(resumeItems); setExperiences(experienceItems); setProjects(projectItems)
-        setEducation(educationItems); setCertifications(certificationItems); setAnswers(answerItems); setActivity(auditItems)
+        setEducation(educationItems); setCertifications(certificationItems); setAnswers(answerItems); setActivity(auditItems); setIngestionRuns(runItems)
       })
       .catch((reason: unknown) => onError(reason instanceof Error ? reason.message : 'Could not load profile details'))
   }, [candidate.id, onError])
@@ -190,6 +195,25 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
     } catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not save answer') }
   }
 
+  async function runConnector(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    const provider = String(data.get('provider')) as 'greenhouse' | 'lever'
+    const sourceKey = String(data.get('source_key') || '')
+    setConnectorRunning(true)
+    try {
+      const run = await executeConnector(candidate.id, provider, sourceKey)
+      setIngestionRuns((items) => [run, ...items])
+      onError(null)
+    } catch (reason) {
+      getIngestionRuns(candidate.id).then(setIngestionRuns).catch(() => undefined)
+      onError(reason instanceof Error ? reason.message : 'Connector execution failed')
+    } finally {
+      setConnectorRunning(false)
+    }
+  }
+
   return <div className="profile-sections">
     <section className="panel"><p className="eyebrow">Selected candidate</p><h2>{candidate.display_name}</h2><p>{candidate.headline}</p></section>
     <section className="panel"><h3>Search preferences</h3><form className="stacked-form" onSubmit={updatePreferences}>
@@ -214,6 +238,18 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
         {!resume.is_master && <div className="inline-form"><button type="button" onClick={() => review(resume, 'approved')}>Approve text</button><button type="button" onClick={() => review(resume, 'approved', true)}>Approve as master</button><button type="button" className="secondary" onClick={() => review(resume, 'rejected')}>Reject</button></div>}
       </article>)}
       <form className="inline-form" onSubmit={addResume}><label>PDF or DOCX<input name="resume" type="file" accept=".pdf,.docx" required /></label><button type="submit">Upload</button></form></section>
+    <section className="panel"><h3>ATS ingestion</h3><p className="muted">Fetch published jobs from a public Greenhouse or Lever board. This never submits an application.</p>
+      <form className="inline-form" onSubmit={runConnector}>
+        <label>Provider<select name="provider"><option value="greenhouse">Greenhouse</option><option value="lever">Lever</option></select></label>
+        <label>Board or site key<input name="source_key" required pattern="[A-Za-z0-9][A-Za-z0-9_-]*" maxLength={100} placeholder="company-slug" /></label>
+        <button type="submit" disabled={connectorRunning}>{connectorRunning ? 'Fetching…' : 'Fetch jobs'}</button>
+      </form>
+      {ingestionRuns.length === 0 ? <p className="muted">No ingestion runs yet.</p> : ingestionRuns.map((run) => <article className="knowledge-row" key={run.id}>
+        <strong>{run.provider} · {run.source_key} <span className="decision">{run.status}</span></strong>
+        <span>{run.discovered_count} discovered · {run.created_count} created · {run.duplicate_count} duplicates</span>
+        {run.error_message && <em>{run.error_message}</em>}
+      </article>)}
+    </section>
     <section className="panel"><h3>Activity</h3>{activity.length === 0 ? <p className="muted">No activity recorded yet.</p> : activity.map((event) => <p className="knowledge-row" key={event.id}><strong>{event.action}</strong><span>{new Date(event.created_at).toLocaleString()}</span></p>)}</section>
   </div>
 }

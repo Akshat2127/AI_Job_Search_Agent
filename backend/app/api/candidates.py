@@ -37,12 +37,12 @@ from backend.app.schemas.candidate import (
     SkillCreate,
     SkillOut,
 )
-from backend.app.schemas.ingestion import IngestionRequest, IngestionRunOut
+from backend.app.schemas.ingestion import ConnectorRunRequest, IngestionRequest, IngestionRunOut
 from backend.app.security.auth import get_current_user
 from backend.app.services import candidates as service
 from backend.app.services.ats_connectors import ExternalJob
 from backend.app.services.audit import record_event
-from backend.app.services.ingestion import ingest_records
+from backend.app.services.ingestion import ConnectorExecutionFailed, execute_connector, ingest_records
 from backend.app.services.resumes import ResumeDuplicateError, ResumeValidationError, delete_resume_file, store_resume
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -320,6 +320,27 @@ def create_ingestion_run(
         for item in payload.records
     ]
     return ingest_records(db, user, candidate, payload.provider, payload.source_key, records)
+
+
+@router.post(
+    "/{candidate_id}/connector-runs",
+    response_model=IngestionRunOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_connector_run(
+    candidate_id: str,
+    payload: ConnectorRunRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IngestionRun:
+    candidate = require_candidate(candidate_id, user, db)
+    try:
+        return execute_connector(db, user, candidate, payload.provider, payload.source_key)
+    except ConnectorExecutionFailed as error:
+        raise HTTPException(
+            error.status_code,
+            f"{error.run.error_message}. Ingestion run: {error.run.id}",
+        ) from error
 
 
 @router.get("/{candidate_id}/ingestion-runs", response_model=list[IngestionRunOut])

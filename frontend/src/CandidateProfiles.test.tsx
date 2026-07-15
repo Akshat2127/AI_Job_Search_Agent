@@ -24,6 +24,12 @@ describe('CandidateProfiles', () => {
       .mockResolvedValueOnce(Response.json([]))
       .mockResolvedValueOnce(Response.json([]))
       .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json({
+        id: 'run-1', provider: 'lever', source_key: 'example', status: 'completed',
+        discovered_count: 3, created_count: 2, duplicate_count: 1, error_code: null,
+        error_message: null, started_at: '2026-07-14T00:00:00Z',
+      }, { status: 201 }))
 
     render(<CandidateProfiles />)
     expect(await screen.findByText('Create the first candidate profile.')).toBeInTheDocument()
@@ -33,5 +39,13 @@ describe('CandidateProfiles', () => {
 
     expect(await screen.findByRole('heading', { name: 'Gurbani Sharma' })).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/candidates', expect.objectContaining({ method: 'POST' }))
+    await userEvent.selectOptions(screen.getByLabelText('Provider'), 'lever')
+    await userEvent.type(screen.getByLabelText('Board or site key'), 'example')
+    await userEvent.click(screen.getByRole('button', { name: 'Fetch jobs' }))
+    expect(await screen.findByText('3 discovered · 2 created · 1 duplicates')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/candidates/candidate-1/connector-runs',
+      expect.objectContaining({ method: 'POST' }),
+    )
   })
 })

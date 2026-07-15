@@ -50,7 +50,7 @@ th { color: #667085; font-size: .75rem; text-transform: uppercase; }
 .profile-choice.selected { background: #e0eaff; box-shadow: inset 3px 0 #155eef; }
 .stacked-form { display: grid; gap: .75rem; margin-top: 1.25rem; }
 .stacked-form label, .inline-form label { display: grid; gap: .3rem; color: #475467; font-size: .85rem; }
-.stacked-form input, .inline-form input { min-width: 0; border: 1px solid #d0d5dd; border-radius: .45rem; padding: .6rem; }
+.stacked-form input, .inline-form input, .inline-form select { min-width: 0; border: 1px solid #d0d5dd; border-radius: .45rem; padding: .6rem; background: white; }
 .profile-sections { display: grid; gap: 1rem; }
 .tag-list { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
 .inline-form { display: flex; align-items: end; gap: .75rem; margin-top: 1rem; }

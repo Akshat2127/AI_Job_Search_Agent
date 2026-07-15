@@ -59,6 +59,9 @@ The candidate workspace exposes preference, skill, employment, project, educatio
 ## Ingestion checkpoint APIs
 
 - `POST /api/v1/candidates/{candidate_id}/ingestion-runs` accepts an authenticated bounded fixture batch for deterministic connector development.
+- `POST /api/v1/candidates/{candidate_id}/connector-runs` executes an authenticated public `greenhouse` or `lever` source.
 - `GET /api/v1/candidates/{candidate_id}/ingestion-runs` lists only that owner and candidate's runs.
 
-Each record requires a provider external ID and public HTTP(S) job URL. The service stores source provenance, converts description HTML to plain text, bounds raw payloads to 256 KB, canonicalizes tracking parameters, retains source aliases, and deduplicates within the candidate. Completion is audited without copying raw payloads into the audit log. This checkpoint does not yet execute live Greenhouse or Lever network requests from the API.
+Each record requires a provider external ID and public HTTP(S) job URL. The service stores source provenance, converts description HTML to plain text, bounds raw payloads to 256 KB, canonicalizes tracking parameters, retains source aliases, and deduplicates within the candidate. Completion is audited without copying raw payloads into the audit log.
+
+Connector source keys are strict slugs and requests use fixed provider HTTPS hosts, so callers cannot supply an arbitrary fetch URL. Requests have connect/read timeouts, bounded retry/backoff for timeouts, HTTP 429, and transient 5xx responses, request pacing, and provider-specific result limits. Lever uses its documented `skip`/`limit` pagination; Greenhouse's public job-board list returns the board's published jobs in one response. Failed executions persist a safe error code/message and owner-scoped audit event. The connector API only reads public postings and never submits applications.

@@ -2,6 +2,7 @@ import hashlib
 import json
 import re
 from datetime import UTC, datetime
+from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -13,12 +14,19 @@ from backend.app.models.identity import User
 from backend.app.models.ingestion import IngestionRun, JobSourceRecord
 from backend.app.models.job import Job
 from backend.app.schemas.job import JobCreate
-from backend.app.services.ats_connectors import ExternalJob
+from backend.app.services.ats_connectors import ConnectorError, ExternalJob, JobConnector, connector_for
 from backend.app.services.audit import record_event
 
 TRACKING_QUERY_PREFIXES = ("utm_",)
 TRACKING_QUERY_KEYS = {"gh_jid", "lever-source", "source", "ref", "referrer"}
 MAX_RAW_PAYLOAD_BYTES = 256_000
+
+
+class ConnectorExecutionFailed(RuntimeError):
+    def __init__(self, run: IngestionRun, status_code: int) -> None:
+        super().__init__(run.error_message or "Connector execution failed")
+        self.run = run
+        self.status_code = status_code
 
 
 class _TextExtractor(HTMLParser):
@@ -35,6 +43,11 @@ class _TextExtractor(HTMLParser):
 def plain_text(value: str | None) -> str | None:
     if value is None:
         return None
+    for _ in range(2):
+        decoded = unescape(value)
+        if decoded == value:
+            break
+        value = decoded
     parser = _TextExtractor()
     parser.feed(value)
     text = " ".join(parser.parts)
@@ -79,16 +92,18 @@ def ingest_records(
     provider: str,
     source_key: str,
     records: list[ExternalJob],
+    run: IngestionRun | None = None,
 ) -> IngestionRun:
-    run = IngestionRun(
-        owner_id=user.id,
-        candidate_id=candidate.id,
-        provider=provider,
-        source_key=source_key,
-        discovered_count=len(records),
-    )
-    db.add(run)
-    db.flush()
+    if run is None:
+        run = IngestionRun(
+            owner_id=user.id,
+            candidate_id=candidate.id,
+            provider=provider,
+            source_key=source_key,
+        )
+        db.add(run)
+        db.flush()
+    run.discovered_count = len(records)
     created = 0
     duplicates = 0
 
@@ -171,3 +186,59 @@ def ingest_records(
     db.commit()
     db.refresh(run)
     return run
+
+
+def execute_connector(
+    db: Session,
+    user: User,
+    candidate: CandidateProfile,
+    provider: str,
+    source_key: str,
+    connector: JobConnector | None = None,
+) -> IngestionRun:
+    run = IngestionRun(
+        owner_id=user.id,
+        candidate_id=candidate.id,
+        provider=provider,
+        source_key=source_key,
+        status="running",
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    try:
+        records = (connector or connector_for(provider)).fetch(source_key)
+        for record in records:
+            if not record.external_id.strip():
+                raise ConnectorError("invalid_upstream_response", "The ATS provider returned a job without an ID")
+            _payload(record)
+        return ingest_records(db, user, candidate, provider, source_key, records, run=run)
+    except Exception as error:
+        db.rollback()
+        persisted = db.get(IngestionRun, run.id)
+        if persisted is None:
+            raise
+        if isinstance(error, ConnectorError):
+            code = error.code
+            message = str(error)
+            status_code = error.status_code
+        else:
+            code = "ingestion_failed"
+            message = "The connector data could not be ingested"
+            status_code = 502
+        persisted.status = "failed"
+        persisted.error_code = code
+        persisted.error_message = message
+        persisted.completed_at = datetime.now(UTC)
+        record_event(
+            db,
+            owner_id=user.id,
+            candidate_id=candidate.id,
+            action="ingestion.failed",
+            entity_type="ingestion_run",
+            entity_id=persisted.id,
+            metadata={"provider": provider, "error_code": code},
+        )
+        db.commit()
+        db.refresh(persisted)
+        raise ConnectorExecutionFailed(persisted, status_code) from error

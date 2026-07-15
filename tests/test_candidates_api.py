@@ -4,6 +4,7 @@ from docx import Document
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+from backend.app.services.ats_connectors import ConnectorError, ExternalJob
 
 client = TestClient(app)
 
@@ -249,3 +250,54 @@ def test_fixture_ingestion_is_owned_audited_and_deduplicated():
     assert all(job["company"] != "Example Corp" for job in client.get("/api/v1/jobs").json())
     audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
     assert sum(event["action"] == "ingestion.completed" for event in audit) == 2
+
+
+def test_connector_execution_records_success_and_safe_failure(monkeypatch):
+    token = create_account("connector-owner@example.com")
+    headers = authorization(token)
+    candidate_id = client.post(
+        "/api/v1/candidates", headers=headers, json={"display_name": "Connector Candidate"}
+    ).json()["id"]
+
+    class SuccessfulConnector:
+        def fetch(self, source_key: str) -> list[ExternalJob]:
+            return [
+                ExternalJob(
+                    external_id="connector-1",
+                    company=source_key,
+                    title="Systems Analyst",
+                    location="Remote",
+                    url="https://jobs.lever.co/example/connector-1",
+                    source="lever",
+                    raw_payload={"id": "connector-1"},
+                )
+            ]
+
+    monkeypatch.setattr("backend.app.services.ingestion.connector_for", lambda provider: SuccessfulConnector())
+    success = client.post(
+        f"/api/v1/candidates/{candidate_id}/connector-runs",
+        headers=headers,
+        json={"provider": "lever", "source_key": "example"},
+    )
+
+    class FailingConnector:
+        def fetch(self, source_key: str) -> list[ExternalJob]:
+            raise ConnectorError("upstream_timeout", "The ATS provider timed out", 504)
+
+    monkeypatch.setattr("backend.app.services.ingestion.connector_for", lambda provider: FailingConnector())
+    failure = client.post(
+        f"/api/v1/candidates/{candidate_id}/connector-runs",
+        headers=headers,
+        json={"provider": "greenhouse", "source_key": "example"},
+    )
+    runs = client.get(f"/api/v1/candidates/{candidate_id}/ingestion-runs", headers=headers).json()
+
+    assert success.status_code == 201, success.text
+    assert success.json()["status"] == "completed"
+    assert success.json()["created_count"] == 1
+    assert failure.status_code == 504
+    assert "upstream" not in failure.text.casefold()
+    assert [run["status"] for run in runs[:2]] == ["failed", "completed"]
+    assert runs[0]["error_code"] == "upstream_timeout"
+    audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
+    assert any(event["action"] == "ingestion.failed" for event in audit)
