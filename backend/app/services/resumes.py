@@ -6,7 +6,7 @@ from pathlib import Path
 from docx import Document
 from fastapi import UploadFile
 from pypdf import PdfReader
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import settings
@@ -80,6 +80,9 @@ async def store_resume(db: Session, candidate: CandidateProfile, upload: UploadF
     candidate_dir.mkdir(parents=True, exist_ok=True)
     storage_path = candidate_dir / f"{uuid_string()}{expected_suffix}"
     storage_path.write_bytes(content)
+    latest_version = db.execute(
+        select(func.max(Resume.version_number)).where(Resume.candidate_id == candidate.id)
+    ).scalar_one()
 
     resume = Resume(
         candidate_id=candidate.id,
@@ -90,6 +93,7 @@ async def store_resume(db: Session, candidate: CandidateProfile, upload: UploadF
         sha256=digest,
         extracted_text=text,
         review_status="needs_review",
+        version_number=(latest_version or 0) + 1,
     )
     db.add(resume)
     db.flush()

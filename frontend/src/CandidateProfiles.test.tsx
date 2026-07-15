@@ -18,6 +18,12 @@ describe('CandidateProfiles', () => {
       }, { status: 201 }))
       .mockResolvedValueOnce(Response.json([]))
       .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
 
     render(<CandidateProfiles />)
     expect(await screen.findByText('Create the first candidate profile.')).toBeInTheDocument()

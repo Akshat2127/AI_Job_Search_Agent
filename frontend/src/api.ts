@@ -43,12 +43,19 @@ export interface Resume {
   byte_size: number
   extracted_text: string
   review_status: string
+  label: string | null
   version_number: number
   is_master: boolean
   is_archived: boolean
 }
 
 export interface CurrentUser { id: string; email: string }
+export interface Experience { id: string; employer: string; title: string; start_date: string | null; end_date: string | null; confirmed: boolean }
+export interface Project { id: string; name: string; role: string | null; confirmed: boolean }
+export interface Education { id: string; institution: string; degree: string | null; confirmed: boolean }
+export interface Certification { id: string; name: string; issuer: string | null; confirmed: boolean }
+export interface ApplicationAnswer { id: string; question_key: string; answer: string; sensitive: boolean; require_confirmation_each_time: boolean }
+export interface AuditEvent { id: string; action: string; entity_type: string; entity_id: string | null; created_at: string }
 
 function csrfToken(): string | null {
   const prefix = 'jobagent_csrf='
@@ -123,6 +130,18 @@ export function savePreferences(candidateId: string, body: unknown): Promise<unk
 export function getResumes(candidateId: string): Promise<Resume[]> {
   return getJson<Resume[]>(`/api/v1/candidates/${candidateId}/resumes`)
 }
+
+export function getExperiences(candidateId: string): Promise<Experience[]> { return getJson(`/api/v1/candidates/${candidateId}/experiences`) }
+export function createExperience(candidateId: string, body: { employer: string; title: string }): Promise<Experience> { return sendJson(`/api/v1/candidates/${candidateId}/experiences`, 'POST', body) }
+export function getProjects(candidateId: string): Promise<Project[]> { return getJson(`/api/v1/candidates/${candidateId}/projects`) }
+export function createProject(candidateId: string, body: { name: string; role?: string }): Promise<Project> { return sendJson(`/api/v1/candidates/${candidateId}/projects`, 'POST', body) }
+export function getEducation(candidateId: string): Promise<Education[]> { return getJson(`/api/v1/candidates/${candidateId}/education`) }
+export function createEducation(candidateId: string, body: { institution: string; degree?: string }): Promise<Education> { return sendJson(`/api/v1/candidates/${candidateId}/education`, 'POST', body) }
+export function getCertifications(candidateId: string): Promise<Certification[]> { return getJson(`/api/v1/candidates/${candidateId}/certifications`) }
+export function createCertification(candidateId: string, body: { name: string; issuer?: string }): Promise<Certification> { return sendJson(`/api/v1/candidates/${candidateId}/certifications`, 'POST', body) }
+export function getAnswers(candidateId: string): Promise<ApplicationAnswer[]> { return getJson(`/api/v1/candidates/${candidateId}/answers`) }
+export function saveAnswer(candidateId: string, body: { question_key: string; answer: string; sensitive: boolean }): Promise<ApplicationAnswer> { return sendJson(`/api/v1/candidates/${candidateId}/answers`, 'PUT', body) }
+export function getAudit(candidateId: string): Promise<AuditEvent[]> { return getJson(`/api/v1/audit?candidate_id=${encodeURIComponent(candidateId)}`) }
 
 export async function uploadResume(candidateId: string, file: File): Promise<Resume> {
   const body = new FormData()

@@ -32,7 +32,7 @@ Every HTTP response includes `X-Request-ID`. A caller-supplied `X-Request-ID` is
 
 Authentication, ownership, pagination envelopes, and normalized domain APIs arrive in subsequent milestones. The current endpoints must not be exposed publicly.
 
-## Milestone 2 preview APIs
+## Candidate knowledge APIs
 
 The in-progress candidate backend exposes:
 
@@ -46,8 +46,10 @@ Password login returns an opaque bearer token for non-browser clients; only its 
 
 Development mode may create one configured local identity, but only for localhost/test clients. The React client checks `/auth/me`, displays sign-in/sign-out controls when appropriate, includes credentials, and attaches CSRF headers to mutations. TLS termination remains mandatory in production.
 
-Resume upload accepts PDF and DOCX up to `MAX_RESUME_BYTES`, validates the declared type, extension, and file signature, extracts text, stores the file below the gitignored `UPLOAD_ROOT`, and marks it `needs_review`. Extracted text is not a confirmed candidate fact until the user approves it.
+Resume upload accepts PDF and DOCX up to `MAX_RESUME_BYTES`, validates the declared type, extension, and file signature, extracts text, stores the file below the gitignored `UPLOAD_ROOT`, assigns a sequential candidate-local version number, and marks it `needs_review`. Extracted text is not a confirmed candidate fact until the user approves it.
 
-Uploading the same file twice for one candidate returns HTTP 409. Deleting a resume removes both its database record and owned local file after path-boundary validation. Resume metadata includes version/master/archive fields; full version promotion remains in progress.
+Uploading the same file twice for one candidate returns HTTP 409. Deleting a resume removes both its database record and owned local file after path-boundary validation. Resume metadata includes a user-editable label plus version, master, and archive fields.
 
 `PATCH /api/v1/candidates/{candidate_id}/resumes/{resume_id}` reviews extracted text and can promote one approved resume as master. Promoting a master demotes the previous master. Master extracted text is immutable; upload a new resume version rather than silently changing confirmed source material.
+
+The candidate workspace exposes preference, skill, employment, project, education, certification, sensitive application-answer, resume review/master, and owner-scoped audit workflows. Sensitive answers remain visibly marked for per-application confirmation and are never inferred.

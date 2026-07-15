@@ -4,7 +4,7 @@ The authoritative implementation order is Milestones 0–11 in the product brief
 
 - [x] 0 — Audit and recovery
 - [x] 1 — Configuration, logging, migrations, API foundation, CI, Docker
-- [ ] 2 — Users, ownership, candidate knowledge base, resume ingestion
+- [x] 2 — Users, ownership, candidate knowledge base, resume ingestion
 - [ ] 3 — Audited ingestion connectors, normalization, provenance, dedupe
 - [ ] 4 — Eligibility, AI provider abstraction, explainable grounded matching
 - [ ] 5 — Accessible production review dashboard
