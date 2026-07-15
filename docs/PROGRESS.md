@@ -7,7 +7,7 @@ Last updated: 2026-07-14.
 - Milestone 0 — audit and recovery: complete.
 - Milestone 1 — foundation: complete and pushed.
 - Milestone 2 — users and candidate profiles: complete and pushed.
-- Milestone 3 — ingestion and provenance: in progress; first audited fixture checkpoint implemented.
+- Milestone 3 — ingestion and provenance: in progress; saved sources and candidate job review implemented.
 - Milestones 4–11: not started.
 
 ## Verified baseline
@@ -76,9 +76,19 @@ Continue Milestone 3 with idempotent scheduled worker execution plus job freshne
 
 - Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`.
 - Branch: `feature/production-job-agent`.
-- Latest pushed checkpoint: `37ad288 feat: add production-safe ATS connector execution`.
+- Latest pushed implementation checkpoint: `e4097eb feat: add saved sources and candidate job review`.
+- Today's pushed sequence, oldest to newest:
+  - `9713dcf feat: complete candidate profile management`
+  - `a095e58 feat: establish audited ingestion foundation`
+  - `37ad288 feat: add production-safe ATS connector execution`
+  - `e4097eb feat: add saved sources and candidate job review`
+- Current runtime state: Docker Compose API, PostgreSQL, and frontend are running and healthy; frontend is available at `http://localhost:3000`; PostgreSQL is at `20260714_0005 (head)`.
+- Current automated gate: 26 backend tests and 4 frontend tests pass with Ruff, format, mypy, runtime/migration smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks. The only known warning is the upstream Starlette `TestClient`/`httpx` deprecation warning.
+- Local live-validation data intentionally remains in the Docker volumes: one isolated validation account/candidate, a reviewed DOCX master resume, fixture runs, public Lever demo ingestion history, one disabled saved Lever source, 358 candidate-owned Lever jobs, and one `maybe` decision. This data is not tracked by Git and may be retained for continued local end-to-end testing.
+- Candidate-owned job data is reachable only through authenticated candidate routes. The unauthenticated legacy job list was repeatedly verified empty after ingestion and rebuilds.
+- Resume uploads use the durable `uploads` named volume; PostgreSQL uses `pgdata`. Both survived repeated API/frontend container recreation.
 - Earlier recovery checkpoints: `cb210f1 fix: restore tested frontend baseline` and `2f82ee0 chore: establish audit and repository guardrails`.
 - Local ignored `jobagent.db` and generated exports remain available but are no longer tracked. Do not commit them.
 - External accounts, email, calendar, applications, deployments, and paid services have not been accessed or changed.
 - Resume/profile claims remain in the legacy hard-coded draft service and are explicitly identified as an ungrounded risk in `docs/GAP_ANALYSIS.md`; replace them through the candidate knowledge-base/artifact-grounding milestones.
-- Resume command: read root/backend/frontend `AGENTS.md`, `docs/DECISIONS.md`, this file, and `docs/ROADMAP.md`; run `git status --short --branch` and `make check`; then implement the “Next continuation task” above.
+- Resume command: read root/backend/frontend `AGENTS.md`, `docs/DECISIONS.md`, this file, and `docs/ROADMAP.md`; run `git status --short --branch`, `git log -5 --oneline`, and `make check`; verify `docker compose ps` plus `docker compose exec -T api alembic current`; then implement the “Next continuation task” above without resetting the Docker volumes.
