@@ -24,6 +24,26 @@ class ConnectorRunRequest(BaseModel):
     source_key: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 
 
+class CandidateSourceCreate(ConnectorRunRequest):
+    label: str | None = Field(default=None, max_length=255)
+
+
+class CandidateSourceUpdate(BaseModel):
+    label: str | None = Field(default=None, max_length=255)
+    is_enabled: bool | None = None
+
+
+class CandidateSourceOut(CandidateSourceCreate):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    candidate_id: str
+    is_enabled: bool
+    created_at: datetime
+    updated_at: datetime
+    last_run_at: datetime | None
+
+
 class IngestionRunOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

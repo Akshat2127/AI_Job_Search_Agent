@@ -68,6 +68,27 @@ export interface IngestionRun {
   error_message: string | null
   started_at: string
 }
+export interface CandidateSource {
+  id: string
+  provider: 'greenhouse' | 'lever'
+  source_key: string
+  label: string | null
+  is_enabled: boolean
+  last_run_at: string | null
+}
+export interface CandidateJob {
+  id: number
+  company: string
+  title: string
+  location: string | null
+  url: string
+  source: string | null
+  description: string | null
+  decision: 'new' | 'approve' | 'maybe' | 'skip'
+  status: string
+}
+export interface CandidateJobPage { items: CandidateJob[]; total: number; limit: number; offset: number }
+export interface JobProvenance { id: string; provider: string; source_key: string; external_id: string; source_url: string; first_seen_at: string; last_seen_at: string }
 
 function csrfToken(): string | null {
   const prefix = 'jobagent_csrf='
@@ -158,6 +179,19 @@ export function getIngestionRuns(candidateId: string): Promise<IngestionRun[]> {
 export function executeConnector(candidateId: string, provider: 'greenhouse' | 'lever', sourceKey: string): Promise<IngestionRun> {
   return sendJson(`/api/v1/candidates/${candidateId}/connector-runs`, 'POST', { provider, source_key: sourceKey })
 }
+export function getSources(candidateId: string): Promise<CandidateSource[]> { return getJson(`/api/v1/candidates/${candidateId}/sources`) }
+export function createSource(candidateId: string, body: { provider: 'greenhouse' | 'lever'; source_key: string; label?: string }): Promise<CandidateSource> { return sendJson(`/api/v1/candidates/${candidateId}/sources`, 'POST', body) }
+export function updateSource(candidateId: string, sourceId: string, body: { is_enabled?: boolean; label?: string }): Promise<CandidateSource> { return sendJson(`/api/v1/candidates/${candidateId}/sources/${sourceId}`, 'PATCH', body) }
+export function runSource(candidateId: string, sourceId: string): Promise<IngestionRun> { return sendJson(`/api/v1/candidates/${candidateId}/sources/${sourceId}/run`, 'POST', {}) }
+export function getCandidateJobs(candidateId: string, options: { q?: string; decision?: string; limit?: number; offset?: number } = {}): Promise<CandidateJobPage> {
+  const query = new URLSearchParams()
+  if (options.q) query.set('q', options.q)
+  if (options.decision) query.set('decision', options.decision)
+  query.set('limit', String(options.limit || 25)); query.set('offset', String(options.offset || 0))
+  return getJson(`/api/v1/candidates/${candidateId}/jobs?${query}`)
+}
+export function reviewCandidateJob(candidateId: string, jobId: number, decision: CandidateJob['decision']): Promise<CandidateJob> { return sendJson(`/api/v1/candidates/${candidateId}/jobs/${jobId}/decision`, 'PATCH', { decision }) }
+export function getJobProvenance(candidateId: string, jobId: number): Promise<JobProvenance[]> { return getJson(`/api/v1/candidates/${candidateId}/jobs/${jobId}/provenance`) }
 
 export async function uploadResume(candidateId: string, file: File): Promise<Resume> {
   const body = new FormData()

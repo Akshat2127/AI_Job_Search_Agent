@@ -15,6 +15,7 @@ import backend.app.models  # noqa: F401
 from backend.app.api.analytics import router as analytics_router
 from backend.app.api.audit import router as audit_router
 from backend.app.api.auth import router as auth_router
+from backend.app.api.candidate_jobs import router as candidate_jobs_router
 from backend.app.api.candidates import router as candidates_router
 from backend.app.api.export import router as export_router
 from backend.app.api.jobs import router as jobs_router
@@ -132,4 +133,5 @@ app.include_router(system_router)
 app.include_router(system_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(candidates_router, prefix="/api/v1")
+app.include_router(candidate_jobs_router, prefix="/api/v1")
 app.include_router(audit_router, prefix="/api/v1")

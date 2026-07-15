@@ -301,3 +301,84 @@ def test_connector_execution_records_success_and_safe_failure(monkeypatch):
     assert runs[0]["error_code"] == "upstream_timeout"
     audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
     assert any(event["action"] == "ingestion.failed" for event in audit)
+
+
+def test_saved_source_job_review_provenance_pagination_and_ownership(monkeypatch):
+    token = create_account("saved-source-owner@example.com")
+    other_token = create_account("saved-source-other@example.com")
+    headers = authorization(token)
+    candidate_id = client.post(
+        "/api/v1/candidates", headers=headers, json={"display_name": "Saved Source Candidate"}
+    ).json()["id"]
+
+    class SavedSourceConnector:
+        def fetch(self, source_key: str) -> list[ExternalJob]:
+            return [
+                ExternalJob(
+                    external_id="saved-1",
+                    company="Saved Example",
+                    title="Platform Engineer",
+                    location="Remote",
+                    url="https://jobs.lever.co/saved/1?utm_source=one",
+                    source="lever",
+                    raw_payload={"id": "saved-1"},
+                ),
+                ExternalJob(
+                    external_id="saved-alias",
+                    company="Saved Example",
+                    title="Platform Engineer",
+                    location="remote",
+                    url="https://jobs.lever.co/saved/1?ref=alias",
+                    source="lever",
+                    raw_payload={"id": "saved-alias"},
+                ),
+            ]
+
+    monkeypatch.setattr("backend.app.services.ingestion.connector_for", lambda provider: SavedSourceConnector())
+    created = client.post(
+        f"/api/v1/candidates/{candidate_id}/sources",
+        headers=headers,
+        json={"provider": "lever", "source_key": "saved", "label": "Saved board"},
+    )
+    duplicate = client.post(
+        f"/api/v1/candidates/{candidate_id}/sources",
+        headers=headers,
+        json={"provider": "lever", "source_key": "saved"},
+    )
+    source_id = created.json()["id"]
+    run = client.post(f"/api/v1/candidates/{candidate_id}/sources/{source_id}/run", headers=headers)
+    page = client.get(
+        f"/api/v1/candidates/{candidate_id}/jobs?provider=lever&q=Platform&limit=1&offset=0",
+        headers=headers,
+    )
+    job_id = page.json()["items"][0]["id"]
+    provenance = client.get(f"/api/v1/candidates/{candidate_id}/jobs/{job_id}/provenance", headers=headers)
+    reviewed = client.patch(
+        f"/api/v1/candidates/{candidate_id}/jobs/{job_id}/decision",
+        headers=headers,
+        json={"decision": "maybe"},
+    )
+    hidden = client.get(f"/api/v1/candidates/{candidate_id}/jobs?limit=1", headers=authorization(other_token))
+    disabled = client.patch(
+        f"/api/v1/candidates/{candidate_id}/sources/{source_id}",
+        headers=headers,
+        json={"is_enabled": False},
+    )
+    blocked_run = client.post(f"/api/v1/candidates/{candidate_id}/sources/{source_id}/run", headers=headers)
+
+    assert created.status_code == 201
+    assert duplicate.status_code == 409
+    assert run.status_code == 201
+    assert run.json()["created_count"] == 1
+    assert page.status_code == 200
+    assert page.json()["total"] == 1
+    assert page.json()["limit"] == 1
+    assert len(provenance.json()) == 2
+    assert all("raw_payload" not in item for item in provenance.json())
+    assert reviewed.json()["decision"] == "maybe"
+    assert reviewed.json()["status"] == "needs_review"
+    assert hidden.status_code == 404
+    assert disabled.json()["is_enabled"] is False
+    assert blocked_run.status_code == 409
+    audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
+    assert any(event["action"] == "job.reviewed" for event in audit)

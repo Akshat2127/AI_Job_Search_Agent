@@ -63,5 +63,13 @@ th { color: #667085; font-size: .75rem; text-transform: uppercase; }
 .knowledge-row span, .knowledge-row em { color: #667085; font-size: .85rem; }
 .stacked-form textarea { min-height: 5rem; border: 1px solid #d0d5dd; border-radius: .45rem; padding: .6rem; }
 .stacked-form .checkbox { display: flex; align-items: center; gap: .5rem; }
+.source-row { display: flex; align-items: center; gap: .6rem; padding: .65rem 0; border-bottom: 1px solid #eaecf0; }
+.source-row > span { display: grid; margin-right: auto; }
+.source-row small, .job-review small { color: #667085; }
+.job-review { display: grid; grid-template-columns: 1fr auto; gap: .6rem; padding: 1rem 0; border-bottom: 1px solid #eaecf0; }
+.job-review > div:first-child { display: grid; }
+.job-review > a, .job-review > .job-actions, .job-review > small { grid-column: 1 / -1; }
+.job-actions, .pagination { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.pagination { justify-content: space-between; margin-top: 1rem; }
 @media (max-width: 700px) { .metrics { grid-template-columns: repeat(2, 1fr); } .topbar { align-items: flex-start; gap: 1rem; } }
 @media (max-width: 800px) { .profile-layout { grid-template-columns: 1fr; } .main-nav { flex-wrap: wrap; justify-content: flex-end; } }

@@ -67,6 +67,45 @@ class DecisionUpdate(BaseModel):
     decision: str = Field(pattern="^(approve|maybe|skip|new|applied|interview|offer|rejected)$")
 
 
+class CandidateDecisionUpdate(BaseModel):
+    decision: str = Field(pattern="^(approve|maybe|skip|new)$")
+
+
+class CandidateJobOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    company: str
+    title: str
+    location: str | None
+    url: str
+    source: str | None
+    description: str | None
+    decision: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CandidateJobPage(BaseModel):
+    items: list[CandidateJobOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class JobProvenanceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    provider: str
+    source_key: str
+    external_id: str
+    source_url: str
+    first_seen_at: datetime
+    last_seen_at: datetime
+
+
 class JobFilters(BaseModel):
     min_score: int | None = None
     decision: str | None = None

@@ -52,6 +52,7 @@ def test_initial_migration_upgrades_empty_database(tmp_path):
         "audit_events",
         "ingestion_runs",
         "job_source_records",
+        "candidate_sources",
         "alembic_version",
     }.issubset(tables)
-    assert revision == ("20260714_0004",)
+    assert revision == ("20260714_0005",)

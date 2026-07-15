@@ -25,10 +25,11 @@ describe('CandidateProfiles', () => {
       .mockResolvedValueOnce(Response.json([]))
       .mockResolvedValueOnce(Response.json([]))
       .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json([]))
+      .mockResolvedValueOnce(Response.json({ items: [], total: 0, limit: 25, offset: 0 }))
       .mockResolvedValueOnce(Response.json({
-        id: 'run-1', provider: 'lever', source_key: 'example', status: 'completed',
-        discovered_count: 3, created_count: 2, duplicate_count: 1, error_code: null,
-        error_message: null, started_at: '2026-07-14T00:00:00Z',
+        id: 'source-1', provider: 'lever', source_key: 'example', label: 'Example board',
+        is_enabled: true, last_run_at: null,
       }, { status: 201 }))
 
     render(<CandidateProfiles />)
@@ -41,10 +42,11 @@ describe('CandidateProfiles', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/candidates', expect.objectContaining({ method: 'POST' }))
     await userEvent.selectOptions(screen.getByLabelText('Provider'), 'lever')
     await userEvent.type(screen.getByLabelText('Board or site key'), 'example')
-    await userEvent.click(screen.getByRole('button', { name: 'Fetch jobs' }))
-    expect(await screen.findByText('3 discovered · 2 created · 1 duplicates')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Label'), 'Example board')
+    await userEvent.click(screen.getByRole('button', { name: 'Save source' }))
+    expect(await screen.findByText('Example board')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/candidates/candidate-1/connector-runs',
+      '/api/v1/candidates/candidate-1/sources',
       expect.objectContaining({ method: 'POST' }),
     )
   })

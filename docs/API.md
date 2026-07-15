@@ -61,7 +61,18 @@ The candidate workspace exposes preference, skill, employment, project, educatio
 - `POST /api/v1/candidates/{candidate_id}/ingestion-runs` accepts an authenticated bounded fixture batch for deterministic connector development.
 - `POST /api/v1/candidates/{candidate_id}/connector-runs` executes an authenticated public `greenhouse` or `lever` source.
 - `GET /api/v1/candidates/{candidate_id}/ingestion-runs` lists only that owner and candidate's runs.
+- `GET|POST /api/v1/candidates/{candidate_id}/sources` lists or creates saved connector sources.
+- `PATCH /api/v1/candidates/{candidate_id}/sources/{source_id}` changes the label or enabled state.
+- `POST /api/v1/candidates/{candidate_id}/sources/{source_id}/run` executes an enabled saved source.
 
 Each record requires a provider external ID and public HTTP(S) job URL. The service stores source provenance, converts description HTML to plain text, bounds raw payloads to 256 KB, canonicalizes tracking parameters, retains source aliases, and deduplicates within the candidate. Completion is audited without copying raw payloads into the audit log.
 
 Connector source keys are strict slugs and requests use fixed provider HTTPS hosts, so callers cannot supply an arbitrary fetch URL. Requests have connect/read timeouts, bounded retry/backoff for timeouts, HTTP 429, and transient 5xx responses, request pacing, and provider-specific result limits. Lever uses its documented `skip`/`limit` pagination; Greenhouse's public job-board list returns the board's published jobs in one response. Failed executions persist a safe error code/message and owner-scoped audit event. The connector API only reads public postings and never submits applications.
+
+## Candidate job review APIs
+
+- `GET /api/v1/candidates/{candidate_id}/jobs` returns an owner-scoped page with `items`, `total`, `limit`, and `offset`; optional `q`, `provider`, and `decision` filters are supported.
+- `PATCH /api/v1/candidates/{candidate_id}/jobs/{job_id}/decision` accepts `new`, `approve`, `maybe`, or `skip` and audits the decision.
+- `GET /api/v1/candidates/{candidate_id}/jobs/{job_id}/provenance` returns retained source aliases and first/last-seen timestamps without exposing stored raw payloads.
+
+Cross-owner source and job identifiers return HTTP 404. Saved disabled sources return HTTP 409 when execution is attempted. The React workspace provides saved-source controls, paginated job review, official posting links, and provenance inspection.

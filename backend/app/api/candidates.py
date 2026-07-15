@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -346,6 +346,8 @@ def create_connector_run(
 @router.get("/{candidate_id}/ingestion-runs", response_model=list[IngestionRunOut])
 def ingestion_runs(
     candidate_id: str,
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> list[IngestionRun]:
@@ -355,5 +357,7 @@ def ingestion_runs(
             select(IngestionRun)
             .where(IngestionRun.owner_id == user.id, IngestionRun.candidate_id == candidate.id)
             .order_by(IngestionRun.started_at.desc())
+            .offset(offset)
+            .limit(limit)
         ).scalars()
     )

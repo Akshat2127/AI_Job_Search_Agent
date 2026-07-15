@@ -55,25 +55,28 @@ Migration `20260714_0003` adds candidate-owned ingestion runs, job ownership/can
 
 Migration `20260714_0004` adds persisted safe connector failure state. Greenhouse and Lever now use fixed HTTPS provider hosts, strict source keys, injected HTTP/clock dependencies, connect/read timeouts, bounded retries and backoff, request pacing, provider result limits, response-shape validation, and deterministic tests. Lever follows documented `skip`/`limit` pagination. Authenticated connector execution and completed/failed run history are available in the candidate workspace; no application submission endpoint is called or exposed.
 
+Migration `20260714_0005` adds owner-scoped saved connector sources with labels, enabled state, last-run timestamps, uniqueness constraints, and audit events. The candidate workspace can save, enable/disable, and manually run sources. Candidate-owned jobs now have paginated search/provider/decision reads, safe provenance views that exclude raw payloads, and audited `new`/`approve`/`maybe`/`skip` review decisions. Cross-owner lookups remain indistinguishable 404s.
+
 The deeper 2026-07-14 end-to-end validation also found and fixed two deployment defects: development CORS now permits `PUT` and `X-CSRF-Token`, and Compose stores resume files in a durable named volume. A live browser-cookie workflow covered every candidate domain, sensitive-answer confirmation, DOCX extraction/review/master promotion, duplicate rejection, audit events, CSRF failure, cross-owner 404 isolation, and database/file persistence across rebuild and restart.
 
 Verification after this checkpoint:
 
-- `make check`: 25 backend tests and 4 frontend tests passed; Ruff, formatting, mypy across 42 source files, isolated from-zero migration/runtime smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks passed.
-- PostgreSQL migrated to `20260714_0004 (head)` and all containers reached healthy status.
+- `make check`: 26 backend tests and 4 frontend tests passed; Ruff, formatting, mypy across 43 source files, isolated from-zero migration/runtime smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks passed.
+- PostgreSQL migrated to `20260714_0005 (head)` and all containers reached healthy status.
 - Live fixture ingestion produced `2 discovered / 1 created / 1 duplicate`; the identical rerun produced `0 created / 2 duplicates`.
 - Live public Lever demo ingestion produced `388 discovered / 358 created / 30 duplicates`; the identical rerun produced `0 created / 388 duplicates`. A nonexistent Greenhouse board returned a safe HTTP 502, persisted `upstream_http_error`, and emitted `ingestion.failed` without exposing candidate-owned jobs through legacy routes.
 - The pre-existing resume database record and physical DOCX remained available after API recreation and restart.
+- Live saved-source validation created and ran a Lever source, deduplicated all 388 previously seen records, returned a 358-job paginated provider view, exposed provenance without raw payloads, persisted and filtered a `maybe` decision, rejected a disabled-source run with HTTP 409, and kept the unauthenticated legacy list empty.
 
 ## Next continuation task
 
-Continue Milestone 3 with saved source configurations, explicit enable/disable controls, idempotent scheduled worker execution, freshness/closure tracking, and candidate-scoped job review APIs. Add pagination to run/job reads before marking the milestone complete.
+Continue Milestone 3 with idempotent scheduled worker execution plus job freshness and source-removal closure tracking. Add source deletion/archive behavior and pagination metadata for ingestion-run history before marking the milestone complete.
 
 ## Durable session handoff
 
 - Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`.
 - Branch: `feature/production-job-agent`.
-- Latest pushed milestone: `9713dcf feat: complete candidate profile management`.
+- Latest pushed checkpoint: `37ad288 feat: add production-safe ATS connector execution`.
 - Earlier recovery checkpoints: `cb210f1 fix: restore tested frontend baseline` and `2f82ee0 chore: establish audit and repository guardrails`.
 - Local ignored `jobagent.db` and generated exports remain available but are no longer tracked. Do not commit them.
 - External accounts, email, calendar, applications, deployments, and paid services have not been accessed or changed.

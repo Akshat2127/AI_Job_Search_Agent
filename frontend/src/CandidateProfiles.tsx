@@ -6,28 +6,38 @@ import {
   createExperience,
   createProject,
   createSkill,
-  executeConnector,
+  createSource,
   getAnswers,
   getAudit,
   getCandidates,
   getCertifications,
   getEducation,
   getExperiences,
+  getCandidateJobs,
   getIngestionRuns,
+  getJobProvenance,
   getProjects,
   getResumes,
   getSkills,
+  getSources,
   savePreferences,
   reviewResume,
+  reviewCandidateJob,
+  runSource,
   saveAnswer,
   uploadResume,
+  updateSource,
   type Candidate,
+  type CandidateJob,
+  type CandidateJobPage,
+  type CandidateSource,
   type ApplicationAnswer,
   type AuditEvent,
   type Certification,
   type Education,
   type Experience,
   type IngestionRun,
+  type JobProvenance,
   type Project,
   type Resume,
   type Skill,
@@ -110,13 +120,17 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
   const [answers, setAnswers] = useState<ApplicationAnswer[]>([])
   const [activity, setActivity] = useState<AuditEvent[]>([])
   const [ingestionRuns, setIngestionRuns] = useState<IngestionRun[]>([])
+  const [sources, setSources] = useState<CandidateSource[]>([])
+  const [jobPage, setJobPage] = useState<CandidateJobPage>({ items: [], total: 0, limit: 25, offset: 0 })
+  const [jobQuery, setJobQuery] = useState('')
+  const [provenance, setProvenance] = useState<Record<number, JobProvenance[]>>({})
   const [connectorRunning, setConnectorRunning] = useState(false)
 
   useEffect(() => {
-    Promise.all([getSkills(candidate.id), getResumes(candidate.id), getExperiences(candidate.id), getProjects(candidate.id), getEducation(candidate.id), getCertifications(candidate.id), getAnswers(candidate.id), getAudit(candidate.id), getIngestionRuns(candidate.id)])
-      .then(([skillItems, resumeItems, experienceItems, projectItems, educationItems, certificationItems, answerItems, auditItems, runItems]) => {
+    Promise.all([getSkills(candidate.id), getResumes(candidate.id), getExperiences(candidate.id), getProjects(candidate.id), getEducation(candidate.id), getCertifications(candidate.id), getAnswers(candidate.id), getAudit(candidate.id), getIngestionRuns(candidate.id), getSources(candidate.id), getCandidateJobs(candidate.id)])
+      .then(([skillItems, resumeItems, experienceItems, projectItems, educationItems, certificationItems, answerItems, auditItems, runItems, sourceItems, jobs]) => {
         setSkills(skillItems); setResumes(resumeItems); setExperiences(experienceItems); setProjects(projectItems)
-        setEducation(educationItems); setCertifications(certificationItems); setAnswers(answerItems); setActivity(auditItems); setIngestionRuns(runItems)
+        setEducation(educationItems); setCertifications(certificationItems); setAnswers(answerItems); setActivity(auditItems); setIngestionRuns(runItems); setSources(sourceItems); setJobPage(jobs)
       })
       .catch((reason: unknown) => onError(reason instanceof Error ? reason.message : 'Could not load profile details'))
   }, [candidate.id, onError])
@@ -195,23 +209,59 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
     } catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not save answer') }
   }
 
-  async function runConnector(event: FormEvent<HTMLFormElement>) {
+  async function addSource(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const form = event.currentTarget
     const data = new FormData(form)
     const provider = String(data.get('provider')) as 'greenhouse' | 'lever'
     const sourceKey = String(data.get('source_key') || '')
+    try {
+      const source = await createSource(candidate.id, { provider, source_key: sourceKey, label: String(data.get('label') || '') || undefined })
+      setSources((items) => [...items, source]); form.reset()
+      onError(null)
+    } catch (reason) {
+      onError(reason instanceof Error ? reason.message : 'Could not save source')
+    }
+  }
+
+  async function executeSavedSource(source: CandidateSource) {
     setConnectorRunning(true)
     try {
-      const run = await executeConnector(candidate.id, provider, sourceKey)
+      const run = await runSource(candidate.id, source.id)
       setIngestionRuns((items) => [run, ...items])
+      setSources((items) => items.map((item) => item.id === source.id ? { ...item, last_run_at: run.started_at } : item))
+      setJobPage(await getCandidateJobs(candidate.id, { q: jobQuery }))
       onError(null)
     } catch (reason) {
       getIngestionRuns(candidate.id).then(setIngestionRuns).catch(() => undefined)
       onError(reason instanceof Error ? reason.message : 'Connector execution failed')
-    } finally {
-      setConnectorRunning(false)
-    }
+    } finally { setConnectorRunning(false) }
+  }
+
+  async function toggleSource(source: CandidateSource) {
+    try { const updated = await updateSource(candidate.id, source.id, { is_enabled: !source.is_enabled }); setSources((items) => items.map((item) => item.id === updated.id ? updated : item)); onError(null) }
+    catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not update source') }
+  }
+
+  async function searchJobs(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    try { setJobPage(await getCandidateJobs(candidate.id, { q: jobQuery })); onError(null) }
+    catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not load jobs') }
+  }
+
+  async function reviewJob(job: CandidateJob, decision: CandidateJob['decision']) {
+    try { const updated = await reviewCandidateJob(candidate.id, job.id, decision); setJobPage((page) => ({ ...page, items: page.items.map((item) => item.id === updated.id ? updated : item) })); onError(null) }
+    catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not review job') }
+  }
+
+  async function showProvenance(jobId: number) {
+    try { const items = await getJobProvenance(candidate.id, jobId); setProvenance((current) => ({ ...current, [jobId]: items })); onError(null) }
+    catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not load provenance') }
+  }
+
+  async function changeJobPage(offset: number) {
+    try { setJobPage(await getCandidateJobs(candidate.id, { q: jobQuery, offset })); onError(null) }
+    catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not load jobs') }
   }
 
   return <div className="profile-sections">
@@ -238,17 +288,33 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
         {!resume.is_master && <div className="inline-form"><button type="button" onClick={() => review(resume, 'approved')}>Approve text</button><button type="button" onClick={() => review(resume, 'approved', true)}>Approve as master</button><button type="button" className="secondary" onClick={() => review(resume, 'rejected')}>Reject</button></div>}
       </article>)}
       <form className="inline-form" onSubmit={addResume}><label>PDF or DOCX<input name="resume" type="file" accept=".pdf,.docx" required /></label><button type="submit">Upload</button></form></section>
-    <section className="panel"><h3>ATS ingestion</h3><p className="muted">Fetch published jobs from a public Greenhouse or Lever board. This never submits an application.</p>
-      <form className="inline-form" onSubmit={runConnector}>
+    <section className="panel"><h3>ATS sources</h3><p className="muted">Save public Greenhouse or Lever boards, then run enabled sources. This never submits an application.</p>
+      <form className="inline-form" onSubmit={addSource}>
         <label>Provider<select name="provider"><option value="greenhouse">Greenhouse</option><option value="lever">Lever</option></select></label>
         <label>Board or site key<input name="source_key" required pattern="[A-Za-z0-9][A-Za-z0-9_-]*" maxLength={100} placeholder="company-slug" /></label>
-        <button type="submit" disabled={connectorRunning}>{connectorRunning ? 'Fetching…' : 'Fetch jobs'}</button>
+        <label>Label<input name="label" maxLength={255} placeholder="Primary boards" /></label>
+        <button type="submit">Save source</button>
       </form>
+      {sources.length === 0 ? <p className="muted">No saved sources.</p> : sources.map((source) => <article className="source-row" key={source.id}>
+        <span><strong>{source.label || source.source_key}</strong><small>{source.provider} · {source.source_key}</small></span>
+        <button type="button" className="secondary" onClick={() => toggleSource(source)}>{source.is_enabled ? 'Disable' : 'Enable'}</button>
+        <button type="button" disabled={!source.is_enabled || connectorRunning} onClick={() => executeSavedSource(source)}>{connectorRunning ? 'Fetching…' : 'Run now'}</button>
+      </article>)}
       {ingestionRuns.length === 0 ? <p className="muted">No ingestion runs yet.</p> : ingestionRuns.map((run) => <article className="knowledge-row" key={run.id}>
         <strong>{run.provider} · {run.source_key} <span className="decision">{run.status}</span></strong>
         <span>{run.discovered_count} discovered · {run.created_count} created · {run.duplicate_count} duplicates</span>
         {run.error_message && <em>{run.error_message}</em>}
       </article>)}
+    </section>
+    <section className="panel"><h3>Candidate jobs</h3><form className="inline-form" onSubmit={searchJobs}><label>Search jobs<input value={jobQuery} onChange={(event) => setJobQuery(event.target.value)} placeholder="title, company, keywords" /></label><button type="submit">Search</button></form>
+      <p className="muted">{jobPage.total} candidate-owned jobs</p>
+      {jobPage.items.length === 0 ? <p>No jobs found.</p> : jobPage.items.map((job) => <article className="job-review" key={job.id}>
+        <div><strong>{job.title}</strong><span>{job.company} · {job.location || 'Location not listed'}</span></div><span className="decision">{job.decision}</span>
+        <a href={job.url} target="_blank" rel="noreferrer">Official posting</a>
+        <div className="job-actions"><button type="button" onClick={() => reviewJob(job, 'approve')}>Approve</button><button type="button" className="secondary" onClick={() => reviewJob(job, 'maybe')}>Maybe</button><button type="button" className="secondary" onClick={() => reviewJob(job, 'skip')}>Skip</button><button type="button" className="secondary" onClick={() => showProvenance(job.id)}>Provenance</button></div>
+        {provenance[job.id]?.map((item) => <small key={item.id}>{item.provider} · {item.source_key} · {item.external_id}</small>)}
+      </article>)}
+      <div className="pagination"><button type="button" className="secondary" disabled={jobPage.offset === 0} onClick={() => changeJobPage(Math.max(0, jobPage.offset - jobPage.limit))}>Previous</button><span>{jobPage.total === 0 ? 0 : jobPage.offset + 1}–{Math.min(jobPage.offset + jobPage.items.length, jobPage.total)} of {jobPage.total}</span><button type="button" className="secondary" disabled={jobPage.offset + jobPage.limit >= jobPage.total} onClick={() => changeJobPage(jobPage.offset + jobPage.limit)}>Next</button></div>
     </section>
     <section className="panel"><h3>Activity</h3>{activity.length === 0 ? <p className="muted">No activity recorded yet.</p> : activity.map((event) => <p className="knowledge-row" key={event.id}><strong>{event.action}</strong><span>{new Date(event.created_at).toLocaleString()}</span></p>)}</section>
   </div>

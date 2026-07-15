@@ -1,10 +1,29 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.db.session import Base
 from backend.app.models.identity import utc_now, uuid_string
+
+
+class CandidateSource(Base):
+    __tablename__ = "candidate_sources"
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "provider", "source_key", name="uq_candidate_source"),
+        Index("ix_candidate_source_enabled", "candidate_id", "is_enabled"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    candidate_id: Mapped[str] = mapped_column(ForeignKey("candidate_profiles.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(50))
+    source_key: Mapped[str] = mapped_column(String(100))
+    label: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class IngestionRun(Base):
