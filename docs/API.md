@@ -7,7 +7,7 @@ New APIs are versioned under `/api/v1`. Legacy unversioned jobs, analytics, and 
 - `GET /api/v1/health`: process liveness and application version.
 - `GET /api/v1/readiness`: database connectivity; returns HTTP 503 when unavailable.
 
-## Current job endpoints
+## Temporary legacy job endpoints
 
 - `GET /api/v1/jobs`: list jobs using the existing optional `min_score`, `decision`, and `q` filters.
 - `POST /api/v1/jobs`: create, score, and deduplicate a job.
@@ -16,6 +16,8 @@ New APIs are versioned under `/api/v1`. Legacy unversioned jobs, analytics, and 
 - `POST /api/v1/jobs/{id}/score`: rerun deterministic scoring.
 - `GET /api/v1/analytics/summary`: legacy aggregate summary.
 - `GET /api/v1/export/jobs.csv`: export current jobs.
+
+These compatibility routes only access legacy jobs whose `candidate_id` is null. Candidate-owned ingested jobs never appear through these unauthenticated routes.
 
 Every HTTP response includes `X-Request-ID`. A caller-supplied `X-Request-ID` is preserved. Validation errors use:
 
@@ -53,3 +55,10 @@ Uploading the same file twice for one candidate returns HTTP 409. Deleting a res
 `PATCH /api/v1/candidates/{candidate_id}/resumes/{resume_id}` reviews extracted text and can promote one approved resume as master. Promoting a master demotes the previous master. Master extracted text is immutable; upload a new resume version rather than silently changing confirmed source material.
 
 The candidate workspace exposes preference, skill, employment, project, education, certification, sensitive application-answer, resume review/master, and owner-scoped audit workflows. Sensitive answers remain visibly marked for per-application confirmation and are never inferred.
+
+## Ingestion checkpoint APIs
+
+- `POST /api/v1/candidates/{candidate_id}/ingestion-runs` accepts an authenticated bounded fixture batch for deterministic connector development.
+- `GET /api/v1/candidates/{candidate_id}/ingestion-runs` lists only that owner and candidate's runs.
+
+Each record requires a provider external ID and public HTTP(S) job URL. The service stores source provenance, converts description HTML to plain text, bounds raw payloads to 256 KB, canonicalizes tracking parameters, retains source aliases, and deduplicates within the candidate. Completion is audited without copying raw payloads into the audit log. This checkpoint does not yet execute live Greenhouse or Lever network requests from the API.

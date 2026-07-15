@@ -10,6 +10,9 @@ services:
       DATABASE_URL: postgresql+psycopg://jobagent:jobagent@db:5432/jobagent
       LOG_FORMAT: console
       CORS_ORIGINS: '["http://localhost:3000"]'
+      UPLOAD_ROOT: /app/storage/uploads
+    volumes:
+      - uploads:/app/storage/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -54,3 +57,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

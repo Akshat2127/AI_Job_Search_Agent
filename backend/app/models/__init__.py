@@ -11,6 +11,7 @@ from backend.app.models.candidate import (
     Resume,
 )
 from backend.app.models.identity import AuthSession, User
+from backend.app.models.ingestion import IngestionRun, JobSourceRecord
 from backend.app.models.job import Job
 
 __all__ = [
@@ -23,7 +24,9 @@ __all__ = [
     "Certification",
     "Education",
     "EmploymentExperience",
+    "IngestionRun",
     "Job",
+    "JobSourceRecord",
     "ProjectExperience",
     "Resume",
     "User",

@@ -9,6 +9,7 @@ COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r /app/backend/requirements.txt
 COPY alembic.ini /app/alembic.ini
 COPY backend /app/backend
+RUN mkdir -p /app/storage/uploads
 RUN chown -R jobagent:jobagent /app
 USER jobagent
 EXPOSE 8000

@@ -29,7 +29,7 @@ npm --prefix frontend run dev
 
 `make check` is the authoritative current local gate. It runs backend tests, migration coverage, Ruff lint/format checks, mypy, an ASGI runtime smoke test, frontend lint/types/tests/build, Compose validation, and whitespace checks.
 
-The smoke test verifies `/api/v1/health`, `/api/v1/readiness`, and `/api/v1/jobs`. To inspect a running process manually:
+The smoke test creates a temporary database, migrates it from zero to Alembic head, and verifies `/api/v1/health`, `/api/v1/readiness`, and `/api/v1/jobs`. It never reads or changes the developer's `jobagent.db`. To inspect a running process manually:
 
 ```bash
 curl -fsS http://localhost:8000/api/v1/health
@@ -58,4 +58,4 @@ docker compose up --build
 docker compose ps
 ```
 
-The API waits for PostgreSQL health, applies migrations, and then starts as a non-root user. The frontend waits for API readiness. Development credentials in Compose are local-only and must not be reused in production.
+The API waits for PostgreSQL health, applies migrations, and then starts as a non-root user. The frontend waits for API readiness. PostgreSQL data uses the `pgdata` volume and resume files use the `uploads` volume, so both survive container recreation. Development credentials in Compose are local-only and must not be reused in production.

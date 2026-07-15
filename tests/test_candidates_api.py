@@ -192,3 +192,60 @@ def test_candidate_knowledge_domains_are_user_confirmed():
     assert project.json()["confirmed"] is True
     assert education.json()["confirmed"] is True
     assert certification.json()["confirmed"] is True
+
+
+def test_fixture_ingestion_is_owned_audited_and_deduplicated():
+    token = create_account("ingestion-owner@example.com")
+    other_token = create_account("ingestion-other@example.com")
+    headers = authorization(token)
+    candidate_id = client.post(
+        "/api/v1/candidates", headers=headers, json={"display_name": "Ingestion Candidate"}
+    ).json()["id"]
+    payload = {
+        "provider": "fixture",
+        "source_key": "fixture-board",
+        "records": [
+            {
+                "external_id": "job-1",
+                "company": "Example Corp",
+                "title": "Platform Engineer",
+                "location": "Remote",
+                "url": "https://jobs.example.com/roles/1?utm_source=test",
+                "description": "<p>Build <strong>safe</strong> systems</p>",
+                "raw_payload": {"id": "job-1"},
+            },
+            {
+                "external_id": "job-1-alias",
+                "company": " Example Corp ",
+                "title": "Platform   Engineer",
+                "location": "remote",
+                "url": "https://jobs.example.com/roles/1?ref=alias",
+                "raw_payload": {"id": "job-1-alias"},
+            },
+        ],
+    }
+
+    first = client.post(f"/api/v1/candidates/{candidate_id}/ingestion-runs", headers=headers, json=payload)
+    second = client.post(f"/api/v1/candidates/{candidate_id}/ingestion-runs", headers=headers, json=payload)
+    hidden = client.get(f"/api/v1/candidates/{candidate_id}/ingestion-runs", headers=authorization(other_token))
+    other_headers = authorization(other_token)
+    other_candidate_id = client.post(
+        "/api/v1/candidates", headers=other_headers, json={"display_name": "Other Ingestion Candidate"}
+    ).json()["id"]
+    other_run = client.post(
+        f"/api/v1/candidates/{other_candidate_id}/ingestion-runs", headers=other_headers, json=payload
+    )
+
+    assert first.status_code == 201, first.text
+    assert first.json()["discovered_count"] == 2
+    assert first.json()["created_count"] == 1
+    assert first.json()["duplicate_count"] == 1
+    assert second.status_code == 201
+    assert second.json()["created_count"] == 0
+    assert second.json()["duplicate_count"] == 2
+    assert hidden.status_code == 404
+    assert other_run.status_code == 201
+    assert other_run.json()["created_count"] == 1
+    assert all(job["company"] != "Example Corp" for job in client.get("/api/v1/jobs").json())
+    audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
+    assert sum(event["action"] == "ingestion.completed" for event in audit) == 2

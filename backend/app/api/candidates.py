@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.db.session import get_db
@@ -14,6 +15,7 @@ from backend.app.models.candidate import (
     Resume,
 )
 from backend.app.models.identity import User
+from backend.app.models.ingestion import IngestionRun
 from backend.app.schemas.candidate import (
     AnswerCreate,
     AnswerOut,
@@ -35,9 +37,12 @@ from backend.app.schemas.candidate import (
     SkillCreate,
     SkillOut,
 )
+from backend.app.schemas.ingestion import IngestionRequest, IngestionRunOut
 from backend.app.security.auth import get_current_user
 from backend.app.services import candidates as service
+from backend.app.services.ats_connectors import ExternalJob
 from backend.app.services.audit import record_event
+from backend.app.services.ingestion import ingest_records
 from backend.app.services.resumes import ResumeDuplicateError, ResumeValidationError, delete_resume_file, store_resume
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
@@ -291,3 +296,43 @@ def delete_resume(
     )
     db.delete(resume)
     db.commit()
+
+
+@router.post("/{candidate_id}/ingestion-runs", response_model=IngestionRunOut, status_code=status.HTTP_201_CREATED)
+def create_ingestion_run(
+    candidate_id: str,
+    payload: IngestionRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> IngestionRun:
+    candidate = require_candidate(candidate_id, user, db)
+    records = [
+        ExternalJob(
+            external_id=item.external_id,
+            company=item.company,
+            title=item.title,
+            location=item.location,
+            url=item.url,
+            source=payload.provider,
+            description=item.description,
+            raw_payload=item.raw_payload,
+        )
+        for item in payload.records
+    ]
+    return ingest_records(db, user, candidate, payload.provider, payload.source_key, records)
+
+
+@router.get("/{candidate_id}/ingestion-runs", response_model=list[IngestionRunOut])
+def ingestion_runs(
+    candidate_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[IngestionRun]:
+    candidate = require_candidate(candidate_id, user, db)
+    return list(
+        db.execute(
+            select(IngestionRun)
+            .where(IngestionRun.owner_id == user.id, IngestionRun.candidate_id == candidate.id)
+            .order_by(IngestionRun.started_at.desc())
+        ).scalars()
+    )

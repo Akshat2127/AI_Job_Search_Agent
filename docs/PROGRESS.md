@@ -6,8 +6,9 @@ Last updated: 2026-07-14.
 
 - Milestone 0 — audit and recovery: complete.
 - Milestone 1 — foundation: complete and pushed.
-- Milestone 2 — users and candidate profiles: complete; awaiting the next ingestion milestone.
-- Milestones 3–11: not started.
+- Milestone 2 — users and candidate profiles: complete and pushed.
+- Milestone 3 — ingestion and provenance: in progress; first audited fixture checkpoint implemented.
+- Milestones 4–11: not started.
 
 ## Verified baseline
 
@@ -48,15 +49,28 @@ Final Milestone 2 verification on 2026-07-14:
 - Live `/api/v1/health`, `/api/v1/readiness`, and frontend `/health` checks passed.
 - Frontend-proxied registration, browser cookie login, `/auth/me`, and authenticated `/candidates` checks passed. Unauthenticated candidate access correctly returned HTTP 401.
 
+## Milestone 3 checkpoint
+
+Migration `20260714_0003` adds candidate-owned ingestion runs, job ownership/canonicalization fields, and source provenance records that preserve aliases and bounded raw fixture payloads. The fixture ingestion API normalizes HTML descriptions to plain text, removes common tracking parameters from canonical URLs, applies deterministic candidate-local URL/fingerprint deduplication, records run counts, and emits owner-scoped audit events. Candidate-owned jobs are excluded from every temporary unauthenticated legacy job route.
+
+The deeper 2026-07-14 end-to-end validation also found and fixed two deployment defects: development CORS now permits `PUT` and `X-CSRF-Token`, and Compose stores resume files in a durable named volume. A live browser-cookie workflow covered every candidate domain, sensitive-answer confirmation, DOCX extraction/review/master promotion, duplicate rejection, audit events, CSRF failure, cross-owner 404 isolation, and database/file persistence across rebuild and restart.
+
+Verification after this checkpoint:
+
+- `make check`: 20 backend tests and 4 frontend tests passed; Ruff, formatting, mypy across 42 source files, isolated from-zero migration/runtime smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks passed.
+- PostgreSQL migrated to `20260714_0003 (head)` and all containers reached healthy status.
+- Live fixture ingestion produced `2 discovered / 1 created / 1 duplicate`; the identical rerun produced `0 created / 2 duplicates`.
+- The pre-existing resume database record and physical DOCX remained available after API recreation and restart.
+
 ## Next continuation task
 
-Begin Milestone 3 with an ingestion connector contract, normalized job/source/provenance schema, deterministic deduplication, and audited fixture-backed import tests. Preserve the existing legacy CSV workflow while the versioned ingestion APIs replace it.
+Continue Milestone 3 by hardening the Greenhouse and Lever clients with injected HTTP transports, SSRF-safe source configuration, pagination, bounded retries/backoff and rate limits, then expose credential-free connector execution with deterministic fakes and run-failure auditing.
 
 ## Durable session handoff
 
 - Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`.
 - Branch: `feature/production-job-agent`.
-- Latest pushed checkpoint before Milestone 2 completion: `e4cc543 feat: add governed resume review workflow`.
+- Latest pushed milestone: `9713dcf feat: complete candidate profile management`.
 - Earlier recovery checkpoints: `cb210f1 fix: restore tested frontend baseline` and `2f82ee0 chore: establish audit and repository guardrails`.
 - Local ignored `jobagent.db` and generated exports remain available but are no longer tracked. Do not commit them.
 - External accounts, email, calendar, applications, deployments, and paid services have not been accessed or changed.

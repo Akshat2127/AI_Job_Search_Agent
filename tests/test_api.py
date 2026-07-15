@@ -21,6 +21,22 @@ def test_versioned_health_and_readiness_include_request_id():
     assert readiness.json() == {"status": "ready", "database": "available"}
 
 
+def test_candidate_mutation_cors_preflight_allows_put_and_csrf():
+    response = client.options(
+        "/api/v1/candidates/example/preferences",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "PUT",
+            "Access-Control-Request-Headers": "content-type,x-csrf-token",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "PUT" in response.headers["access-control-allow-methods"]
+    assert "X-CSRF-Token" in response.headers["access-control-allow-headers"]
+
+
 def test_versioned_jobs_route_preserves_legacy_compatibility():
     legacy = client.get("/jobs")
     versioned = client.get("/api/v1/jobs")

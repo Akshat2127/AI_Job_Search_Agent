@@ -50,6 +50,8 @@ def test_initial_migration_upgrades_empty_database(tmp_path):
         "certifications",
         "project_experiences",
         "audit_events",
+        "ingestion_runs",
+        "job_source_records",
         "alembic_version",
     }.issubset(tables)
-    assert revision == ("8a8bf14544a8",)
+    assert revision == ("20260714_0003",)

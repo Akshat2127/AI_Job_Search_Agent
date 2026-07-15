@@ -9,6 +9,16 @@ from backend.app.services.scoring import score_job
 
 
 def create_job(db: Session, payload: JobCreate) -> Job:
+    existing = db.execute(
+        select(Job).where(
+            Job.candidate_id.is_(None),
+            Job.company == payload.company,
+            Job.title == payload.title,
+            Job.url == payload.url,
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
     job = Job(**payload.model_dump())
     enrich_job(job)
     db.add(job)
@@ -17,7 +27,12 @@ def create_job(db: Session, payload: JobCreate) -> Job:
     except IntegrityError:
         db.rollback()
         existing = db.execute(
-            select(Job).where(Job.company == payload.company, Job.title == payload.title, Job.url == payload.url)
+            select(Job).where(
+                Job.candidate_id.is_(None),
+                Job.company == payload.company,
+                Job.title == payload.title,
+                Job.url == payload.url,
+            )
         ).scalar_one()
         return existing
     db.refresh(job)
@@ -37,7 +52,7 @@ def enrich_job(job: Job) -> Job:
 def list_jobs(
     db: Session, min_score: int | None = None, decision: str | None = None, q: str | None = None
 ) -> list[Job]:
-    stmt = select(Job)
+    stmt = select(Job).where(Job.candidate_id.is_(None))
     if min_score is not None:
         stmt = stmt.where(Job.fit_score >= min_score)
     if decision:
