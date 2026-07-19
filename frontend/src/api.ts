@@ -124,6 +124,10 @@ export function browserLogin(email: string, password: string): Promise<{ user: C
   return sendJson('/api/v1/auth/browser-login', 'POST', { email, password })
 }
 
+export function registerAccount(email: string, password: string): Promise<CurrentUser> {
+  return sendJson('/api/v1/auth/register', 'POST', { email, password })
+}
+
 export async function browserLogout(): Promise<void> {
   const csrf = csrfToken()
   const response = await fetch('/api/v1/auth/logout', {

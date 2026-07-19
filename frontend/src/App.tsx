@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { getJobs, getSummary, type AnalyticsSummary, type Job } from './api'
+import { useCallback, useEffect, useState } from 'react'
+import { getJobs, getSummary, type AnalyticsSummary, type CurrentUser, type Job } from './api'
 import CandidateProfiles from './CandidateProfiles'
 import AuthControls from './AuthControls'
 import './styles.css'
@@ -14,9 +14,11 @@ const initialState: LoadState = { status: 'loading' }
 export default function App() {
   const [state, setState] = useState<LoadState>(initialState)
   const [reloadKey, setReloadKey] = useState(0)
-  const [view, setView] = useState<'jobs' | 'profiles'>('jobs')
+  const [view, setView] = useState<'workspace' | 'legacy'>('workspace')
+  const [user, setUser] = useState<CurrentUser | null | undefined>(undefined)
 
   useEffect(() => {
+    if (view !== 'legacy' || !user) return
     const controller = new AbortController()
 
     Promise.all([getJobs(controller.signal), getSummary(controller.signal)])
@@ -31,7 +33,12 @@ export default function App() {
       })
 
     return () => controller.abort()
-  }, [reloadKey])
+  }, [reloadKey, user, view])
+
+  const sessionChanged = useCallback((current: CurrentUser | null) => {
+    setUser(current)
+    if (current) setView('workspace')
+  }, [])
 
   function reload() {
     setState({ status: 'loading' })
@@ -46,15 +53,19 @@ export default function App() {
           <h1>JobAgent AI</h1>
         </div>
         <nav className="main-nav" aria-label="Primary navigation">
-          <button type="button" className={view === 'jobs' ? 'active' : ''} onClick={() => setView('jobs')}>Jobs</button>
-          <button type="button" className={view === 'profiles' ? 'active' : ''} onClick={() => setView('profiles')}>Candidates</button>
+          <button type="button" className={view === 'workspace' ? 'active' : ''} onClick={() => setView('workspace')}>Workspace</button>
+          <button type="button" className={view === 'legacy' ? 'active' : ''} onClick={() => setView('legacy')}>Legacy sample</button>
           <a href="http://localhost:8000/docs">API documentation</a>
-          <AuthControls />
+          <AuthControls onSessionChange={sessionChanged} />
         </nav>
       </header>
 
       <main>
-        {view === 'profiles' ? <CandidateProfiles /> : <>
+        {user === undefined ? <p role="status" className="panel">Checking your session…</p> : user === null ? <section className="panel welcome-panel">
+          <p className="eyebrow">Basic working journey</p>
+          <h2>Sign in or create an account to begin</h2>
+          <p>Create a candidate, confirm profile facts, save a Greenhouse or Lever source, ingest public jobs, and review decisions. JobAgent never submits an application for you.</p>
+        </section> : view === 'workspace' ? <CandidateProfiles key={user.id} /> : <>
         {state.status === 'loading' && <p role="status" className="panel">Loading job workspace…</p>}
 
         {state.status === 'error' && (

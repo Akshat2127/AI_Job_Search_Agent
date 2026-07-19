@@ -4,6 +4,23 @@ A human-approved AI job search automation platform.
 
 ## Quick start
 
+The fastest usable local version runs the complete stack with Docker:
+
+```bash
+docker compose up --build --detach
+```
+
+Open `http://localhost:3000`, choose **Create account**, and then:
+
+1. Create a candidate profile.
+2. Open **Discovery**, save a Greenhouse or Lever source key, and run it.
+3. Search the candidate-owned jobs and mark each one approve, maybe, or skip.
+
+This is a local basic alpha: discovery and human review work, but scheduled refresh,
+matching, document generation, and application submission are not implemented yet.
+
+For backend-only development:
+
 ```bash
 cd jobagent-ai-full
 python3 -m venv .venv
@@ -35,7 +52,9 @@ npm --prefix frontend run dev
 
 Open `http://localhost:3000`. Keep the API running on port 8000; Vite proxies the current jobs and analytics endpoints during development.
 
-The React client is a tested recovery baseline with summary and job-list loading/error/empty states. It is not yet the complete review dashboard described in the roadmap.
+The React client now provides the basic account, candidate knowledge-base, source
+discovery, and candidate-owned job-review journey. It is not yet the complete
+production dashboard described in the roadmap.
 
 ## Useful commands
 

@@ -18,11 +18,13 @@ button:focus-visible, a:focus-visible { outline: 3px solid #84adff; outline-offs
 .main-nav { display: flex; align-items: center; gap: .75rem; }
 .main-nav button { background: transparent; color: #d0d5dd; padding: .45rem .65rem; }
 .main-nav button.active { background: #344054; color: white; }
-.auth-status, .auth-form { display: flex; align-items: center; gap: .5rem; font-size: .8rem; }
+.auth-status, .auth-form, .auth-entry { display: flex; align-items: center; gap: .5rem; font-size: .8rem; }
 .auth-status button, .auth-form button { padding: .4rem .6rem; }
 .auth-form label { display: grid; color: #d0d5dd; font-size: .7rem; }
 .auth-form input { width: 150px; border: 1px solid #667085; border-radius: .35rem; padding: .3rem; }
 .auth-form [role="alert"] { color: #fda29b; }
+.auth-switch { background: transparent; color: #b2ccff; padding: .35rem; text-decoration: underline; }
+.auth-entry > [role="alert"] { color: #fda29b; max-width: 12rem; }
 .eyebrow { margin: 0; color: #667085; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .topbar .eyebrow { color: #98a2b3; }
 main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
@@ -41,6 +43,7 @@ th { color: #667085; font-size: .75rem; text-transform: uppercase; }
 .score { background: #ecfdf3; color: #027a48; }
 .decision { background: #f2f4f7; color: #344054; font-size: .8rem; }
 .empty-state { padding: 2rem; color: #667085; text-align: center; }
+.welcome-panel { max-width: 720px; margin: 4rem auto; font-size: 1.05rem; line-height: 1.6; }
 .error-panel { border-color: #fda29b; }
 .muted { color: #667085; }
 .profile-layout { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 1rem; }

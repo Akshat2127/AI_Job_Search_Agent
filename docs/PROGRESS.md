@@ -1,6 +1,6 @@
 # Implementation Progress
 
-Last updated: 2026-07-14.
+Last updated: 2026-07-19.
 
 ## Milestone status
 
@@ -72,19 +72,50 @@ Verification after this checkpoint:
 
 Continue Milestone 3 with idempotent scheduled worker execution plus job freshness and source-removal closure tracking. Add source deletion/archive behavior and pagination metadata for ingestion-run history before marking the milestone complete.
 
+## Basic alpha usability checkpoint (2026-07-19)
+
+The browser now has a coherent first-run path instead of requiring account setup
+through API documentation. A signed-out user can create an account, is signed in
+automatically, and lands in the candidate workspace. Authentication state is owned
+by the application shell so login/logout immediately changes the visible workspace.
+The candidate workspace is now the default view; the old unauthenticated sample
+dashboard is retained only as an explicitly labeled legacy view.
+
+This is a usable local basic alpha for account creation, candidate setup, saved
+Greenhouse/Lever sources, manual ingestion, candidate-owned job search, provenance,
+and approve/maybe/skip review. It does not claim production readiness and does not
+automatically submit applications.
+
+Verification on 2026-07-19:
+
+- `make check` passed: 26 backend tests, 4 frontend tests, Ruff lint/format, mypy
+  across 43 source files, from-zero migration/runtime smoke, ESLint, TypeScript,
+  production Vite build, Compose validation, and diff checks.
+- The rebuilt PostgreSQL/API/frontend Compose stack reached healthy status; API
+  readiness and frontend health passed.
+- A fresh browser-style session registered and automatically authenticated a new
+  account through the frontend proxy, then created a candidate with CSRF protection.
+- A saved public Lever demo source completed with `388 discovered / 358 created /
+  30 duplicate`; the candidate jobs endpoint returned all 358 persisted jobs.
+- A live review changed one job from `new` to `maybe`/`needs_review`, while the same
+  candidate jobs route without authentication returned HTTP 401.
+- The only automated-test warning remains the upstream Starlette `TestClient`/
+  `httpx` deprecation warning.
+
 ## Durable session handoff
 
 - Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`.
 - Branch: `feature/production-job-agent`.
-- Latest pushed implementation checkpoint: `e4097eb feat: add saved sources and candidate job review`.
+- Latest completed implementation checkpoint: `feat: add basic first-run workspace`
+  (commit and push this checkpoint before resuming milestone work).
 - Today's pushed sequence, oldest to newest:
   - `9713dcf feat: complete candidate profile management`
   - `a095e58 feat: establish audited ingestion foundation`
   - `37ad288 feat: add production-safe ATS connector execution`
   - `e4097eb feat: add saved sources and candidate job review`
-- Current runtime state: Docker Compose API, PostgreSQL, and frontend are running and healthy; frontend is available at `http://localhost:3000`; PostgreSQL is at `20260714_0005 (head)`.
+- Current runtime state: the rebuilt Docker Compose API, PostgreSQL, and frontend are running and healthy; the basic alpha is available at `http://localhost:3000`; PostgreSQL is at `20260714_0005 (head)`.
 - Current automated gate: 26 backend tests and 4 frontend tests pass with Ruff, format, mypy, runtime/migration smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks. The only known warning is the upstream Starlette `TestClient`/`httpx` deprecation warning.
-- Local live-validation data intentionally remains in the Docker volumes: one isolated validation account/candidate, a reviewed DOCX master resume, fixture runs, public Lever demo ingestion history, one disabled saved Lever source, 358 candidate-owned Lever jobs, and one `maybe` decision. This data is not tracked by Git and may be retained for continued local end-to-end testing.
+- Local live-validation data intentionally remains in the Docker volumes: the earlier isolated validation data plus a 2026-07-19 basic-alpha account/candidate, public Lever demo run, 358 candidate-owned jobs, and one `maybe` decision. This data is not tracked by Git and may be retained for continued local end-to-end testing.
 - Candidate-owned job data is reachable only through authenticated candidate routes. The unauthenticated legacy job list was repeatedly verified empty after ingestion and rebuilds.
 - Resume uploads use the durable `uploads` named volume; PostgreSQL uses `pgdata`. Both survived repeated API/frontend container recreation.
 - Earlier recovery checkpoints: `cb210f1 fix: restore tested frontend baseline` and `2f82ee0 chore: establish audit and repository guardrails`.
