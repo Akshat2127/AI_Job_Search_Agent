@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import CandidateProfiles from './CandidateProfiles'
@@ -6,7 +6,7 @@ import CandidateProfiles from './CandidateProfiles'
 const fetchMock = vi.fn<typeof fetch>()
 
 beforeEach(() => vi.stubGlobal('fetch', fetchMock))
-afterEach(() => { vi.unstubAllGlobals(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.clearAllMocks() })
 
 describe('CandidateProfiles', () => {
   it('shows the empty state and creates a candidate', async () => {
@@ -47,6 +47,51 @@ describe('CandidateProfiles', () => {
     expect(await screen.findByText('Example board')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/candidates/candidate-1/sources',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('adds a user-confirmed LinkedIn job to the candidate workspace', async () => {
+    const candidate = {
+      id: 'candidate-1', owner_id: 'user-1', display_name: 'Test Candidate',
+      headline: null, summary: null, years_experience: null, is_archived: false,
+    }
+    const job = {
+      id: 42, company: 'Example Company', title: 'Product Analyst', location: 'Remote',
+      url: 'https://www.linkedin.com/jobs/view/12345', source: 'linkedin',
+      description: 'User-confirmed description', decision: 'new', status: 'discovered',
+    }
+    let jobsLoaded = 0
+    fetchMock.mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url === '/api/v1/candidates' && init?.method !== 'POST') return Response.json([candidate])
+      if (url === '/api/v1/candidates/candidate-1/jobs/manual') {
+        return Response.json({ job, created: true }, { status: 201 })
+      }
+      if (url.startsWith('/api/v1/candidates/candidate-1/jobs?')) {
+        jobsLoaded += 1
+        return Response.json({ items: jobsLoaded > 1 ? [job] : [], total: jobsLoaded > 1 ? 1 : 0, limit: 25, offset: 0 })
+      }
+      if (url.startsWith('/api/v1/audit') || url.endsWith('/skills') || url.endsWith('/resumes') ||
+          url.endsWith('/experiences') || url.endsWith('/projects') || url.endsWith('/education') ||
+          url.endsWith('/certifications') || url.endsWith('/answers') || url.endsWith('/ingestion-runs') ||
+          url.endsWith('/sources')) return Response.json([])
+      throw new Error(`Unexpected request: ${url}`)
+    })
+
+    render(<CandidateProfiles />)
+    await screen.findByRole('heading', { name: 'Test Candidate' })
+    await userEvent.type(screen.getByLabelText('LinkedIn or Indeed job URL'), 'https://www.linkedin.com/jobs/view/12345?trackingId=test')
+    await userEvent.type(screen.getByLabelText('Company'), 'Example Company')
+    await userEvent.type(screen.getByLabelText('Job title'), 'Product Analyst')
+    await userEvent.type(screen.getByLabelText('Location'), 'Remote')
+    await userEvent.type(screen.getByLabelText('Job description'), 'User-confirmed description')
+    await userEvent.click(screen.getByRole('button', { name: 'Add job' }))
+
+    expect(await screen.findByText('Job added to this candidate.')).toBeInTheDocument()
+    expect(await screen.findByText('Product Analyst')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/candidates/candidate-1/jobs/manual',
       expect.objectContaining({ method: 'POST' }),
     )
   })

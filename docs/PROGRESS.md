@@ -104,17 +104,40 @@ Verification on 2026-07-19:
 
 ## Durable session handoff
 
+### Manual LinkedIn/Indeed intake and pre-production checkpoint (2026-07-19)
+
+- Candidate owners can paste a LinkedIn or Indeed job link plus user-confirmed
+  company, title, location, and description into the browser workspace. No provider
+  page is fetched or scraped.
+- Manual links are restricted to provider-owned HTTP(S) hosts, normalized to stable
+  HTTPS hosts, stripped of known tracking parameters, and deduplicated candidate-
+  locally while preserving Indeed `jk` identifiers and safe provenance.
+- Repeated intake is idempotent (`created: false`), cross-owner access remains a 404,
+  unauthenticated access remains a 401, and intake actions are owner-scoped/audited.
+- `make check` passed with 28 backend and 5 frontend tests plus all existing lint,
+  formatting, typing, migration/runtime smoke, production build, Compose, and diff
+  gates. The upstream Starlette test-client deprecation warning remains unchanged.
+- The isolated `jobagent-preprod` Compose project built and reached healthy status
+  on frontend port 3100/API port 8100 with separate PostgreSQL, upload volumes, and
+  cookie names. A fresh cookie/CSRF session created a candidate, added a normalized
+  LinkedIn job, rejected the duplicate as a second record, returned exactly one
+  persisted job, and rejected anonymous access with HTTP 401.
+- `docs/RELEASE_PROCESS.md` now defines feature-to-main promotion, hosted staging
+  boundaries, versioned release tags/images, backup, approval, and rollback rules.
+  Repository branch protection and hosted deployments still require remote setup.
+
 - Remote: `https://github.com/Akshat2127/AI_Job_Search_Agent.git`.
 - Branch: `feature/production-job-agent`.
-- Latest completed implementation checkpoint: `feat: add basic first-run workspace`
+- Latest completed implementation checkpoint: `feat: add manual job intake and preprod safeguards`
   (commit and push this checkpoint before resuming milestone work).
 - Today's pushed sequence, oldest to newest:
   - `9713dcf feat: complete candidate profile management`
   - `a095e58 feat: establish audited ingestion foundation`
   - `37ad288 feat: add production-safe ATS connector execution`
   - `e4097eb feat: add saved sources and candidate job review`
-- Current runtime state: the rebuilt Docker Compose API, PostgreSQL, and frontend are running and healthy; the basic alpha is available at `http://localhost:3000`; PostgreSQL is at `20260714_0005 (head)`.
-- Current automated gate: 26 backend tests and 4 frontend tests pass with Ruff, format, mypy, runtime/migration smoke, ESLint, TypeScript, Vite build, Compose config, and diff checks. The only known warning is the upstream Starlette `TestClient`/`httpx` deprecation warning.
+  - `f2412ee feat: add basic first-run workspace`
+- Current runtime state: both the original local stack (`http://localhost:3000`) and isolated pre-production stack (`http://localhost:3100`) are running; the latter uses separate synthetic validation data. PostgreSQL remains at `20260714_0005 (head)` in both because this slice required no schema change.
+- Current automated gate: 28 backend tests and 5 frontend tests pass with Ruff, format, mypy, runtime/migration smoke, ESLint, TypeScript, Vite build, both Compose configurations, and diff checks. The only known warning is the upstream Starlette `TestClient`/`httpx` deprecation warning.
 - Local live-validation data intentionally remains in the Docker volumes: the earlier isolated validation data plus a 2026-07-19 basic-alpha account/candidate, public Lever demo run, 358 candidate-owned jobs, and one `maybe` decision. This data is not tracked by Git and may be retained for continued local end-to-end testing.
 - Candidate-owned job data is reachable only through authenticated candidate routes. The unauthenticated legacy job list was repeatedly verified empty after ingestion and rebuilds.
 - Resume uploads use the durable `uploads` named volume; PostgreSQL uses `pgdata`. Both survived repeated API/frontend container recreation.
@@ -122,4 +145,4 @@ Verification on 2026-07-19:
 - Local ignored `jobagent.db` and generated exports remain available but are no longer tracked. Do not commit them.
 - External accounts, email, calendar, applications, deployments, and paid services have not been accessed or changed.
 - Resume/profile claims remain in the legacy hard-coded draft service and are explicitly identified as an ungrounded risk in `docs/GAP_ANALYSIS.md`; replace them through the candidate knowledge-base/artifact-grounding milestones.
-- Resume command: read root/backend/frontend `AGENTS.md`, `docs/DECISIONS.md`, this file, and `docs/ROADMAP.md`; run `git status --short --branch`, `git log -5 --oneline`, and `make check`; verify `docker compose ps` plus `docker compose exec -T api alembic current`; then implement the “Next continuation task” above without resetting the Docker volumes.
+- Resume command: read root/backend/frontend `AGENTS.md`, `docs/DECISIONS.md`, this file, `docs/RELEASE_PROCESS.md`, and `docs/ROADMAP.md`; run `git status --short --branch`, `git log -5 --oneline`, and `make check`; verify both normal and pre-production Compose projects; then implement the “Next continuation task” above without resetting Docker volumes.

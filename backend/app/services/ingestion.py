@@ -19,6 +19,14 @@ from backend.app.services.audit import record_event
 
 TRACKING_QUERY_PREFIXES = ("utm_",)
 TRACKING_QUERY_KEYS = {"gh_jid", "lever-source", "source", "ref", "referrer"}
+MANUAL_TRACKING_QUERY_KEYS = TRACKING_QUERY_KEYS | {
+    "currentjobid",
+    "from",
+    "original_referer",
+    "position",
+    "referenceid",
+    "trackingid",
+}
 MAX_RAW_PAYLOAD_BYTES = 256_000
 
 
@@ -69,6 +77,29 @@ def canonicalize_url(value: str) -> str:
         )
     )
     return urlunsplit((scheme, netloc, path, query, ""))
+
+
+def canonicalize_manual_job_url(value: str) -> tuple[str, str]:
+    parsed = urlsplit(value.strip())
+    hostname = (parsed.hostname or "").casefold()
+    if hostname == "linkedin.com" or hostname.endswith(".linkedin.com"):
+        provider = "linkedin"
+        hostname = "www.linkedin.com"
+    elif hostname == "indeed.com" or hostname.endswith(".indeed.com"):
+        provider = "indeed"
+        hostname = "www.indeed.com"
+    else:
+        raise ValueError("Only LinkedIn and Indeed job URLs are supported")
+    path = parsed.path.rstrip("/") or "/"
+    query = urlencode(
+        sorted(
+            (key, item)
+            for key, item in parse_qsl(parsed.query, keep_blank_values=True)
+            if key.casefold() not in MANUAL_TRACKING_QUERY_KEYS
+            and not key.casefold().startswith(TRACKING_QUERY_PREFIXES)
+        )
+    )
+    return provider, urlunsplit(("https", hostname, path, query, ""))
 
 
 def dedupe_key(record: ExternalJob) -> str:

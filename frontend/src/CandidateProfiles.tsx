@@ -6,6 +6,7 @@ import {
   createExperience,
   createProject,
   createSkill,
+  createManualJob,
   createSource,
   getAnswers,
   getAudit,
@@ -125,6 +126,7 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
   const [jobQuery, setJobQuery] = useState('')
   const [provenance, setProvenance] = useState<Record<number, JobProvenance[]>>({})
   const [connectorRunning, setConnectorRunning] = useState(false)
+  const [manualJobNotice, setManualJobNotice] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([getSkills(candidate.id), getResumes(candidate.id), getExperiences(candidate.id), getProjects(candidate.id), getEducation(candidate.id), getCertifications(candidate.id), getAnswers(candidate.id), getAudit(candidate.id), getIngestionRuns(candidate.id), getSources(candidate.id), getCandidateJobs(candidate.id)])
@@ -249,6 +251,28 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
     catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not load jobs') }
   }
 
+  async function addManualJob(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    try {
+      const result = await createManualJob(candidate.id, {
+        url: String(data.get('job_url') || ''),
+        company: String(data.get('job_company') || ''),
+        title: String(data.get('job_title') || ''),
+        location: String(data.get('job_location') || '') || undefined,
+        description: String(data.get('job_description') || '') || undefined,
+      })
+      setJobPage(await getCandidateJobs(candidate.id, { q: jobQuery }))
+      setManualJobNotice(result.created ? 'Job added to this candidate.' : 'This job was already in the candidate workspace.')
+      form.reset()
+      onError(null)
+    } catch (reason) {
+      setManualJobNotice(null)
+      onError(reason instanceof Error ? reason.message : 'Could not add job link')
+    }
+  }
+
   async function reviewJob(job: CandidateJob, decision: CandidateJob['decision']) {
     try { const updated = await reviewCandidateJob(candidate.id, job.id, decision); setJobPage((page) => ({ ...page, items: page.items.map((item) => item.id === updated.id ? updated : item) })); onError(null) }
     catch (reason) { onError(reason instanceof Error ? reason.message : 'Could not review job') }
@@ -305,6 +329,16 @@ function CandidateWorkspace({ candidate, onError }: { candidate: Candidate; onEr
         <span>{run.discovered_count} discovered · {run.created_count} created · {run.duplicate_count} duplicates</span>
         {run.error_message && <em>{run.error_message}</em>}
       </article>)}
+    </section>
+    <section className="panel"><h3>Add a LinkedIn or Indeed job</h3>
+      <p className="muted">Paste a job link and user-confirmed details. JobAgent stores it for review but does not scrape the site or submit an application.</p>
+      <form className="stacked-form" onSubmit={addManualJob}>
+        <label>LinkedIn or Indeed job URL<input name="job_url" type="url" required maxLength={2048} placeholder="https://www.linkedin.com/jobs/view/…" /></label>
+        <div className="inline-form"><label>Company<input name="job_company" required maxLength={255} /></label><label>Job title<input name="job_title" required maxLength={255} /></label><label>Location<input name="job_location" maxLength={255} /></label></div>
+        <label>Job description<textarea name="job_description" maxLength={500000} placeholder="Paste the job description for future matching" /></label>
+        <button type="submit">Add job</button>
+      </form>
+      {manualJobNotice && <p role="status">{manualJobNotice}</p>}
     </section>
     <section className="panel"><h3>Candidate jobs</h3><form className="inline-form" onSubmit={searchJobs}><label>Search jobs<input value={jobQuery} onChange={(event) => setJobQuery(event.target.value)} placeholder="title, company, keywords" /></label><button type="submit">Search</button></form>
       <p className="muted">{jobPage.total} candidate-owned jobs</p>

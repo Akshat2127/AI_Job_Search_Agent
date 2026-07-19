@@ -71,6 +71,33 @@ class CandidateDecisionUpdate(BaseModel):
     decision: str = Field(pattern="^(approve|maybe|skip|new)$")
 
 
+class ManualJobCreate(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    company: str = Field(min_length=1, max_length=255)
+    title: str = Field(min_length=1, max_length=255)
+    location: str | None = Field(default=None, max_length=255)
+    description: str | None = Field(default=None, max_length=500_000)
+
+    @field_validator("company", "title")
+    @classmethod
+    def strip_manual_required_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be blank")
+        return value
+
+    @field_validator("url")
+    @classmethod
+    def validate_supported_job_url(cls, value: str) -> str:
+        value = JobCreate.validate_public_web_url_shape(value)
+        hostname = (urlsplit(value).hostname or "").casefold()
+        supported = hostname == "linkedin.com" or hostname.endswith(".linkedin.com")
+        supported = supported or hostname == "indeed.com" or hostname.endswith(".indeed.com")
+        if not supported:
+            raise ValueError("must be a LinkedIn or Indeed job URL")
+        return value
+
+
 class CandidateJobOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -85,6 +112,11 @@ class CandidateJobOut(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+
+
+class ManualJobIntakeOut(BaseModel):
+    job: CandidateJobOut
+    created: bool
 
 
 class CandidateJobPage(BaseModel):

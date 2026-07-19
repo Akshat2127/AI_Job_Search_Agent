@@ -59,3 +59,7 @@ docker compose ps
 ```
 
 The API waits for PostgreSQL health, applies migrations, and then starts as a non-root user. The frontend waits for API readiness. PostgreSQL data uses the `pgdata` volume and resume files use the `uploads` volume, so both survive container recreation. Development credentials in Compose are local-only and must not be reused in production.
+
+For an isolated local pre-production rehearsal, use `make preprod-up` and open
+`http://localhost:3100`. It has distinct containers, ports, cookies, PostgreSQL data,
+and uploads. See `docs/RELEASE_PROCESS.md` for promotion and rollback requirements.

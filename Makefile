@@ -32,6 +32,12 @@ test: backend-test
 frontend-dev:
 	npm --prefix frontend run dev
 
+preprod-up:
+	docker compose -f docker-compose.yml -f docker-compose.preprod.yml up --build --detach
+
+preprod-down:
+	docker compose -f docker-compose.yml -f docker-compose.preprod.yml down
+
 frontend-check:
 	npm --prefix frontend run lint
 	npm --prefix frontend run typecheck
@@ -40,4 +46,5 @@ frontend-check:
 
 check: backend-check frontend-check
 	docker compose config -q
+	docker compose -f docker-compose.yml -f docker-compose.preprod.yml config -q
 	git diff --check

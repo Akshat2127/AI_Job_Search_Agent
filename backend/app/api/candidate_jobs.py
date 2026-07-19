@@ -1,3 +1,5 @@
+import hashlib
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -14,11 +16,24 @@ from backend.app.schemas.ingestion import (
     CandidateSourceUpdate,
     IngestionRunOut,
 )
-from backend.app.schemas.job import CandidateDecisionUpdate, CandidateJobOut, CandidateJobPage, JobProvenanceOut
+from backend.app.schemas.job import (
+    CandidateDecisionUpdate,
+    CandidateJobOut,
+    CandidateJobPage,
+    JobProvenanceOut,
+    ManualJobCreate,
+    ManualJobIntakeOut,
+)
 from backend.app.security.auth import get_current_user
 from backend.app.services import candidates as candidate_service
+from backend.app.services.ats_connectors import ExternalJob
 from backend.app.services.audit import record_event
-from backend.app.services.ingestion import ConnectorExecutionFailed, execute_connector
+from backend.app.services.ingestion import (
+    ConnectorExecutionFailed,
+    canonicalize_manual_job_url,
+    execute_connector,
+    ingest_records,
+)
 
 router = APIRouter(prefix="/candidates/{candidate_id}", tags=["candidate jobs"])
 
@@ -171,6 +186,58 @@ def list_candidate_jobs(
         limit=limit,
         offset=offset,
     )
+
+
+@router.post("/jobs/manual", response_model=ManualJobIntakeOut, status_code=status.HTTP_201_CREATED)
+def create_manual_job(
+    candidate_id: str,
+    payload: ManualJobCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ManualJobIntakeOut:
+    candidate = require_candidate(candidate_id, user, db)
+    provider, canonical_url = canonicalize_manual_job_url(payload.url)
+    external_id = hashlib.sha256(canonical_url.encode()).hexdigest()
+    run = ingest_records(
+        db,
+        user,
+        candidate,
+        provider,
+        "manual-link",
+        [
+            ExternalJob(
+                external_id=external_id,
+                company=payload.company,
+                title=payload.title,
+                location=payload.location,
+                url=canonical_url,
+                source=provider,
+                description=payload.description,
+                raw_payload={"intake": "user_confirmed"},
+            )
+        ],
+    )
+    source_record = db.execute(
+        select(JobSourceRecord).where(
+            JobSourceRecord.candidate_id == candidate.id,
+            JobSourceRecord.provider == provider,
+            JobSourceRecord.source_key == "manual-link",
+            JobSourceRecord.external_id == external_id,
+        )
+    ).scalar_one()
+    job = require_job(candidate.id, source_record.job_id, user, db)
+    record_event(
+        db,
+        owner_id=user.id,
+        candidate_id=candidate.id,
+        action="job.manually_added",
+        entity_type="job",
+        entity_id=str(job.id),
+        metadata={"provider": provider, "created": run.created_count == 1},
+    )
+    db.commit()
+    db.refresh(job)
+    return ManualJobIntakeOut(job=CandidateJobOut.model_validate(job), created=run.created_count == 1)
 
 
 def require_job(candidate_id: str, job_id: int, user: User, db: Session) -> Job:

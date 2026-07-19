@@ -14,10 +14,14 @@ Open `http://localhost:3000`, choose **Create account**, and then:
 
 1. Create a candidate profile.
 2. Open **Discovery**, save a Greenhouse or Lever source key, and run it.
-3. Search the candidate-owned jobs and mark each one approve, maybe, or skip.
+3. Paste user-confirmed LinkedIn or Indeed job links when you find them externally.
+4. Search the candidate-owned jobs and mark each one approve, maybe, or skip.
 
 This is a local basic alpha: discovery and human review work, but scheduled refresh,
 matching, document generation, and application submission are not implemented yet.
+
+Run the isolated local pre-production rehearsal on `http://localhost:3100` with
+`make preprod-up`. See `docs/RELEASE_PROCESS.md` before promoting changes to `main`.
 
 For backend-only development:
 

@@ -88,6 +88,7 @@ export interface CandidateJob {
   status: string
 }
 export interface CandidateJobPage { items: CandidateJob[]; total: number; limit: number; offset: number }
+export interface ManualJobIntake { job: CandidateJob; created: boolean }
 export interface JobProvenance { id: string; provider: string; source_key: string; external_id: string; source_url: string; first_seen_at: string; last_seen_at: string }
 
 function csrfToken(): string | null {
@@ -195,6 +196,7 @@ export function getCandidateJobs(candidateId: string, options: { q?: string; dec
   return getJson(`/api/v1/candidates/${candidateId}/jobs?${query}`)
 }
 export function reviewCandidateJob(candidateId: string, jobId: number, decision: CandidateJob['decision']): Promise<CandidateJob> { return sendJson(`/api/v1/candidates/${candidateId}/jobs/${jobId}/decision`, 'PATCH', { decision }) }
+export function createManualJob(candidateId: string, body: { url: string; company: string; title: string; location?: string; description?: string }): Promise<ManualJobIntake> { return sendJson(`/api/v1/candidates/${candidateId}/jobs/manual`, 'POST', body) }
 export function getJobProvenance(candidateId: string, jobId: number): Promise<JobProvenance[]> { return getJson(`/api/v1/candidates/${candidateId}/jobs/${jobId}/provenance`) }
 
 export async function uploadResume(candidateId: string, file: File): Promise<Resume> {

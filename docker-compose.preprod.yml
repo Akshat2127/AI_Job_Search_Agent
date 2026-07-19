@@ -1,0 +1,33 @@
+name: jobagent-preprod
+
+services:
+  api:
+    ports: !override
+      - "8100:8000"
+    environment:
+      APP_ENV: local
+      AUTH_MODE: password
+      DATABASE_URL: postgresql+psycopg://jobagent_preprod:local-preprod-only@db:5432/jobagent_preprod
+      CORS_ORIGINS: '["http://localhost:3100"]'
+      SESSION_COOKIE_NAME: jobagent_preprod_session
+      CSRF_COOKIE_NAME: jobagent_preprod_csrf
+    volumes:
+      - preprod_uploads:/app/storage/uploads
+
+  frontend:
+    ports: !override
+      - "3100:8080"
+
+  db:
+    environment:
+      POSTGRES_USER: jobagent_preprod
+      POSTGRES_PASSWORD: local-preprod-only
+      POSTGRES_DB: jobagent_preprod
+    volumes:
+      - preprod_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobagent_preprod -d jobagent_preprod"]
+
+volumes:
+  preprod_pgdata:
+  preprod_uploads:

@@ -382,3 +382,73 @@ def test_saved_source_job_review_provenance_pagination_and_ownership(monkeypatch
     assert blocked_run.status_code == 409
     audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
     assert any(event["action"] == "job.reviewed" for event in audit)
+
+
+def test_manual_linkedin_and_indeed_intake_is_normalized_owned_and_idempotent():
+    token = create_account("manual-job-owner@example.com")
+    other_token = create_account("manual-job-other@example.com")
+    headers = authorization(token)
+    candidate_id = client.post(
+        "/api/v1/candidates", headers=headers, json={"display_name": "Manual Job Candidate"}
+    ).json()["id"]
+    payload = {
+        "url": "https://www.linkedin.com/jobs/view/12345/?trackingId=secret&utm_source=test",
+        "company": "Example Company",
+        "title": "Product Analyst",
+        "location": "Remote",
+        "description": "User-confirmed job description",
+    }
+
+    first = client.post(f"/api/v1/candidates/{candidate_id}/jobs/manual", headers=headers, json=payload)
+    duplicate = client.post(
+        f"/api/v1/candidates/{candidate_id}/jobs/manual",
+        headers=headers,
+        json={**payload, "url": "http://linkedin.com/jobs/view/12345?ref=feed"},
+    )
+    invalid = client.post(
+        f"/api/v1/candidates/{candidate_id}/jobs/manual",
+        headers=headers,
+        json={**payload, "url": "https://example.com/jobs/12345"},
+    )
+    hidden = client.get(f"/api/v1/candidates/{candidate_id}/jobs", headers=authorization(other_token))
+
+    assert first.status_code == 201, first.text
+    assert first.json()["created"] is True
+    assert first.json()["job"]["source"] == "linkedin"
+    assert first.json()["job"]["url"] == "https://www.linkedin.com/jobs/view/12345"
+    assert duplicate.status_code == 201
+    assert duplicate.json()["created"] is False
+    assert duplicate.json()["job"]["id"] == first.json()["job"]["id"]
+    assert invalid.status_code == 422
+    assert hidden.status_code == 404
+
+    provenance = client.get(
+        f"/api/v1/candidates/{candidate_id}/jobs/{first.json()['job']['id']}/provenance",
+        headers=headers,
+    )
+    assert provenance.status_code == 200
+    assert provenance.json()[0]["provider"] == "linkedin"
+    audit = client.get(f"/api/v1/audit?candidate_id={candidate_id}", headers=headers).json()
+    assert sum(event["action"] == "job.manually_added" for event in audit) == 2
+
+
+def test_manual_indeed_intake_preserves_job_key_and_strips_tracking():
+    token = create_account("manual-indeed-owner@example.com")
+    headers = authorization(token)
+    candidate_id = client.post("/api/v1/candidates", headers=headers, json={"display_name": "Indeed Candidate"}).json()[
+        "id"
+    ]
+
+    response = client.post(
+        f"/api/v1/candidates/{candidate_id}/jobs/manual",
+        headers=headers,
+        json={
+            "url": "https://uk.indeed.com/viewjob?jk=abc123&from=search&utm_campaign=test",
+            "company": "Indeed Example",
+            "title": "Business Analyst",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["job"]["source"] == "indeed"
+    assert response.json()["job"]["url"] == "https://www.indeed.com/viewjob?jk=abc123"

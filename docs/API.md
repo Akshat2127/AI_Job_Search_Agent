@@ -71,8 +71,16 @@ Connector source keys are strict slugs and requests use fixed provider HTTPS hos
 
 ## Candidate job review APIs
 
+- `POST /api/v1/candidates/{candidate_id}/jobs/manual` accepts user-confirmed job
+  details for a LinkedIn or Indeed job URL. It canonicalizes the URL, removes known
+  tracking parameters, preserves provider job identifiers, records provenance, and
+  returns `created: false` when the same candidate already owns the job.
 - `GET /api/v1/candidates/{candidate_id}/jobs` returns an owner-scoped page with `items`, `total`, `limit`, and `offset`; optional `q`, `provider`, and `decision` filters are supported.
 - `PATCH /api/v1/candidates/{candidate_id}/jobs/{job_id}/decision` accepts `new`, `approve`, `maybe`, or `skip` and audits the decision.
 - `GET /api/v1/candidates/{candidate_id}/jobs/{job_id}/provenance` returns retained source aliases and first/last-seen timestamps without exposing stored raw payloads.
 
 Cross-owner source and job identifiers return HTTP 404. Saved disabled sources return HTTP 409 when execution is attempted. The React workspace provides saved-source controls, paginated job review, official posting links, and provenance inspection.
+
+Manual intake never fetches or scrapes LinkedIn or Indeed. The user supplies and
+confirms the company, title, location, and optional description. General search API
+integration remains disabled until approved provider access and credentials exist.
